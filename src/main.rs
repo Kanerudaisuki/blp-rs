@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
-pub mod read;
 pub mod header;
-pub mod version;
+pub mod read;
 mod texture_type;
+pub mod version;
 
 use crate::read::convert_blp_to_rgba_image;
 use image::{ImageFormat, RgbaImage};
