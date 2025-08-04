@@ -1,8 +1,8 @@
-use crate::decode_bgra_jpeg::jpeg_get_alpha;
 use crate::header::Header;
 use crate::texture_type::TextureType;
 use byteorder::{LittleEndian, ReadBytesExt};
 use image::{ImageFormat, RgbaImage};
+use jpeg_decoder::Decoder as JpegDecoder;
 use std::error::Error;
 use std::io::{Cursor, Read};
 
@@ -15,23 +15,20 @@ pub fn convert_blp_to_rgba_image(buf: &[u8]) -> Result<RgbaImage, Box<dyn Error 
         return Err("Only JPEG-encoded BLP is supported in this function".into());
     }
 
-    let current_pos = cursor.position();
-    if current_pos != 156 {
-        println!("Warning: unexpected cursor position, got {}", current_pos);
+    if cursor.position() != 156 {
+        println!("Warning: unexpected cursor position, got {}", cursor.position());
     }
 
     let jpeg_header_size = cursor.read_u32::<LittleEndian>()? as usize;
     let mut jpeg_header_chunk = vec![0u8; jpeg_header_size];
     cursor.read_exact(&mut jpeg_header_chunk)?;
 
-    // Проверка покрытия всех мипмапов
     let mut max_covered = cursor.position() as usize;
     let mut decoded_levels = 0;
 
     for i in 0..16 {
         let offset = header.mipmap_offsets[i] as usize;
         let length = header.mipmap_lengths[i] as usize;
-
         if length == 0 {
             continue;
         }
@@ -42,10 +39,7 @@ pub fn convert_blp_to_rgba_image(buf: &[u8]) -> Result<RgbaImage, Box<dyn Error 
             continue;
         }
 
-        if end > max_covered {
-            max_covered = end;
-        }
-
+        max_covered = max_covered.max(end);
         decoded_levels += 1;
         println!("Mipmap[{}]: offset = {}, length = {}", i, offset, length);
     }
@@ -62,7 +56,6 @@ pub fn convert_blp_to_rgba_image(buf: &[u8]) -> Result<RgbaImage, Box<dyn Error 
         println!("⚠️ File has trailing data: {} bytes", buf.len() - max_covered);
     }
 
-    // Основной мипмап
     let offset = header.mipmap_offsets[0] as usize;
     let length = header.mipmap_lengths[0] as usize;
 
@@ -75,21 +68,35 @@ pub fn convert_blp_to_rgba_image(buf: &[u8]) -> Result<RgbaImage, Box<dyn Error 
     full_jpeg.extend_from_slice(&jpeg_header_chunk);
     full_jpeg.extend_from_slice(jpeg_chunk);
 
-    // RGB (из обычного JPEG)
+    // Decode base image
     let mut rgb = image::ImageReader::with_format(Cursor::new(&full_jpeg), ImageFormat::Jpeg)
         .decode()
         .map_err(|e| format!("JPEG decode failed: {}", e))?
         .into_rgba8();
 
-    let alpha = jpeg_get_alpha(&full_jpeg)?;
+    // Decode alpha mask (BGRA)
+    let mut decoder = JpegDecoder::new(Cursor::new(&full_jpeg));
+    decoder.read_info()?;
+    let metadata = decoder
+        .info()
+        .ok_or("Missing JPEG metadata")?;
+    let pixels = decoder.decode()?;
 
-    // BGR → RGB
-    for pixel in rgb.pixels_mut() {
-        pixel.0.swap(0, 2);
+    let expected = metadata.width as usize * metadata.height as usize * 4;
+    if pixels.len() != expected {
+        return Err("JPEG does not contain BGRA data (only RGB present)".into());
     }
 
-    for (dst, src) in rgb.pixels_mut().zip(alpha.pixels()) {
-        dst.0 = [dst.0[0], dst.0[1], dst.0[2], dst.0[3].saturating_sub(src.0[3])];
+    for (i, dst) in rgb.pixels_mut().enumerate() {
+        let idx = i * 4;
+        let alpha = pixels[idx + 3];
+
+        *dst = image::Rgba([
+            dst.0[2], // swap B↔R
+            dst.0[1],
+            dst.0[0],
+            dst.0[3].saturating_sub(alpha),
+        ]);
     }
 
     Ok(rgb)
