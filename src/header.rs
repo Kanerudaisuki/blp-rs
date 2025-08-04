@@ -4,6 +4,8 @@ use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use std::error::Error;
 use std::io::Cursor;
 
+pub const HEADER_SIZE: u64 = 156;
+
 #[derive(Debug)]
 pub struct Header {
     pub version: Version,

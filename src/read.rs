@@ -1,7 +1,7 @@
 use crate::header::Header;
 use crate::texture_type::TextureType;
 use byteorder::{LittleEndian, ReadBytesExt};
-use image::{ImageFormat, RgbaImage};
+use image::RgbaImage;
 use jpeg_decoder::Decoder as JpegDecoder;
 use std::error::Error;
 use std::io::{Cursor, Read};
@@ -23,42 +23,8 @@ pub fn convert_blp_to_rgba_image(buf: &[u8]) -> Result<RgbaImage, Box<dyn Error 
     let mut jpeg_header_chunk = vec![0u8; jpeg_header_size];
     cursor.read_exact(&mut jpeg_header_chunk)?;
 
-    let mut max_covered = cursor.position() as usize;
-    let mut decoded_levels = 0;
-
-    for i in 0..16 {
-        let offset = header.mipmap_offsets[i] as usize;
-        let length = header.mipmap_lengths[i] as usize;
-        if length == 0 {
-            continue;
-        }
-
-        let end = offset + length;
-        if end > buf.len() {
-            println!("Skipping mipmap[{}]: out of bounds", i);
-            continue;
-        }
-
-        max_covered = max_covered.max(end);
-        decoded_levels += 1;
-        println!("Mipmap[{}]: offset = {}, length = {}", i, offset, length);
-    }
-
-    println!("Total decoded mipmaps: {}", decoded_levels);
-    println!("Max covered offset = {}", max_covered);
-    println!("Buffer length = {}", buf.len());
-
-    if max_covered == buf.len() {
-        println!("✅ All mipmaps + header cover the file exactly.");
-    } else if max_covered > buf.len() {
-        println!("❌ Mipmaps exceed file length!");
-    } else {
-        println!("⚠️ File has trailing data: {} bytes", buf.len() - max_covered);
-    }
-
     let offset = header.mipmap_offsets[0] as usize;
     let length = header.mipmap_lengths[0] as usize;
-
     if length == 0 || offset + length > buf.len() {
         return Err("No valid mipmap[0] found".into());
     }
@@ -68,36 +34,31 @@ pub fn convert_blp_to_rgba_image(buf: &[u8]) -> Result<RgbaImage, Box<dyn Error 
     full_jpeg.extend_from_slice(&jpeg_header_chunk);
     full_jpeg.extend_from_slice(jpeg_chunk);
 
-    // Decode base image
-    let mut rgb = image::ImageReader::with_format(Cursor::new(&full_jpeg), ImageFormat::Jpeg)
-        .decode()
-        .map_err(|e| format!("JPEG decode failed: {}", e))?
-        .into_rgba8();
-
-    // Decode alpha mask (BGRA)
     let mut decoder = JpegDecoder::new(Cursor::new(&full_jpeg));
     decoder.read_info()?;
     let metadata = decoder
         .info()
         .ok_or("Missing JPEG metadata")?;
+
+    let width = metadata.width as u32;
+    let height = metadata.height as u32;
     let pixels = decoder.decode()?;
 
-    let expected = metadata.width as usize * metadata.height as usize * 4;
+    let expected = (width * height * 4) as usize;
     if pixels.len() != expected {
         return Err("JPEG does not contain BGRA data (only RGB present)".into());
     }
 
-    for (i, dst) in rgb.pixels_mut().enumerate() {
+    let mut image = RgbaImage::new(width, height);
+    for (i, pixel) in image.pixels_mut().enumerate() {
         let idx = i * 4;
-        let alpha = pixels[idx + 3];
-
-        *dst = image::Rgba([
-            dst.0[2], // swap B↔R
-            dst.0[1],
-            dst.0[0],
-            dst.0[3].saturating_sub(alpha),
+        *pixel = image::Rgba([
+            255u8.saturating_sub(pixels[idx + 2]), //
+            255u8.saturating_sub(pixels[idx + 1]),
+            255u8.saturating_sub(pixels[idx + 0]),
+            255u8.saturating_sub(pixels[idx + 3]),
         ]);
     }
 
-    Ok(rgb)
+    Ok(image)
 }
