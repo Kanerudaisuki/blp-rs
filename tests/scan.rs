@@ -17,8 +17,16 @@ mod scan {
         let out = Path::new(OUT_DIR);
 
         if out.exists() {
-            fs::remove_dir_all(out).unwrap();
+            match fs::remove_dir_all(&out) {
+                Ok(_) => {}
+                Err(e) => {
+                    eprintln!("⚠️ Не удалось удалить папку {}: {e}", out.display());
+                    // Можно упасть, если это критично:
+                    // panic!("Can't delete {}", out.display());
+                }
+            }
         }
+
         fs::create_dir_all(out).unwrap();
 
         let mut seen: HashMap<String, PathBuf> = HashMap::new();

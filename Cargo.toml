@@ -14,3 +14,4 @@ walkdir = "2.5.0"
 
 [lib]
 name = "blp_rs"
+path = "src/lib.rs"

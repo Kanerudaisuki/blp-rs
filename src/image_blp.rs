@@ -1,11 +1,9 @@
 use crate::header::{HEADER_SIZE, Header};
+use crate::mipmap::Mipmap;
 use crate::texture_type::TextureType;
 use byteorder::{LittleEndian, ReadBytesExt};
-use image::{Rgba, RgbaImage};
-use jpeg_decoder::Decoder as JpegDecoder;
 use std::error::Error;
 use std::io::{Cursor, Read};
-use crate::mipmap::Mipmap;
 
 #[derive(Debug)]
 pub struct ImageBlp {
@@ -18,91 +16,102 @@ impl ImageBlp {
         let mut cursor = Cursor::new(buf);
         let header = Header::parse(&mut cursor)?;
 
-        if header.texture_type != TextureType::JPEG {
-            return Err("Only JPEG-encoded BLP is supported".into());
-        }
-
         if cursor.position() != HEADER_SIZE {
             eprintln!("Warning: unexpected cursor position, got {}", cursor.position());
         }
 
+        let mut mipmaps = (0..16)
+            .map(|i| {
+                let w = (header.width >> i).max(1);
+                let h = (header.height >> i).max(1);
+                Mipmap { width: w, height: h, image: None }
+            })
+            .collect::<Vec<_>>();
+
+        match header.texture_type {
+            TextureType::JPEG => Self::fill_jpeg(&mut cursor, &header, buf, &mut mipmaps)?,
+            TextureType::DIRECT => Self::fill_direct(&mut cursor, &header, buf, &mut mipmaps)?,
+        }
+
+        Ok(Self { header, mipmaps })
+    }
+
+    fn fill_jpeg(cursor: &mut Cursor<&[u8]>, header: &Header, buf: &[u8], mipmaps: &mut Vec<Mipmap>) -> Result<(), Box<dyn Error + Send + Sync>> {
         let jpeg_header_size = cursor.read_u32::<LittleEndian>()? as usize;
         let mut jpeg_header_chunk = vec![0u8; jpeg_header_size];
         cursor.read_exact(&mut jpeg_header_chunk)?;
 
-        let mut mipmaps = Vec::new();
-        let mut width = header.width;
-        let mut height = header.height;
+        let mut max_data_end = 0;
 
         for i in 0..16 {
-            if width == 0 || height == 0 {
-                break;
-            }
-
             let offset = header.mipmap_offsets[i] as usize;
             let length = header.mipmap_lengths[i] as usize;
 
-            if length != 0 && offset + length <= buf.len() {
-                let jpeg_chunk = &buf[offset..offset + length];
-                let mut full_jpeg = Vec::with_capacity(jpeg_header_size + length);
-                full_jpeg.extend_from_slice(&jpeg_header_chunk);
-                full_jpeg.extend_from_slice(jpeg_chunk);
+            if length == 0 || offset + length > buf.len() {
+                continue;
+            }
 
-                let mut decoder = JpegDecoder::new(Cursor::new(&full_jpeg));
+            let jpeg_chunk = &buf[offset..offset + length];
+            let mipmap = Mipmap::read_jpeg(&jpeg_header_chunk, jpeg_chunk)?;
 
-                match decoder.read_info() {
-                    Ok(()) => {
-                        let metadata = match decoder.info() {
-                            Some(info) => info,
-                            None => {
-                                mipmaps.push(Mipmap { width, height, image: None });
-                                width /= 2;
-                                height /= 2;
-                                continue;
-                            }
-                        };
-
-                        let dec_w = metadata.width as u32;
-                        let dec_h = metadata.height as u32;
-                        let pixels = match decoder.decode() {
-                            Ok(p) => p,
-                            Err(_) => {
-                                mipmaps.push(Mipmap { width, height, image: None });
-                                width /= 2;
-                                height /= 2;
-                                continue;
-                            }
-                        };
-
-                        if pixels.len() != (dec_w * dec_h * 4) as usize {
-                            mipmaps.push(Mipmap { width, height, image: None });
-                        } else {
-                            let mut image = RgbaImage::new(width, height);
-                            for (i, pixel) in image.pixels_mut().enumerate() {
-                                let idx = i * 4;
-                                *pixel = Rgba([
-                                    255u8.saturating_sub(pixels[idx + 2]), // R
-                                    255u8.saturating_sub(pixels[idx + 1]), // G
-                                    255u8.saturating_sub(pixels[idx + 0]), // B
-                                    255u8.saturating_sub(pixels[idx + 3]), // A
-                                ]);
-                            }
-
-                            mipmaps.push(Mipmap { width, height, image: Some(image) });
-                        }
-                    }
-                    Err(_) => {
-                        mipmaps.push(Mipmap { width, height, image: None });
-                    }
+            // Привязка по размеру
+            let mut level = 0;
+            let mut w = header.width;
+            let mut h = header.height;
+            while level < 16 {
+                if w.max(1) == mipmap.width && h.max(1) == mipmap.height {
+                    break;
                 }
-            } else {
-                mipmaps.push(Mipmap { width, height, image: None });
-            };
+                if w == 0 && h == 0 {
+                    break;
+                }
+                w >>= 1;
+                h >>= 1;
+                level += 1;
+            }
 
-            width /= 2;
-            height /= 2;
+            if level < 16 {
+                mipmaps[level] = mipmap;
+            }
+
+            max_data_end = max_data_end.max(offset + length);
         }
 
-        Ok(Self { header, mipmaps })
+        let read_header_end = cursor.position() as usize;
+        let total_used = max_data_end.max(read_header_end);
+        if total_used != buf.len() {
+            println!("Warning: file size = {}, but used only {} bytes ({} extra or missing)", buf.len(), total_used, buf.len() as isize - total_used as isize);
+        }
+
+        Ok(())
+    }
+
+    fn fill_direct(cursor: &mut Cursor<&[u8]>, header: &Header, buf: &[u8], mipmaps: &mut Vec<Mipmap>) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let mut palette = [[0u8; 3]; 256];
+        for i in 0..256 {
+            let color = cursor.read_u32::<LittleEndian>()?;
+            palette[i] = [
+                ((color >> 16) & 0xFF) as u8, // R
+                ((color >> 8) & 0xFF) as u8,  // G
+                (color & 0xFF) as u8,         // B
+            ];
+        }
+
+        for i in 0..16 {
+            let offset = header.mipmap_offsets[i] as usize;
+            let length = header.mipmap_lengths[i] as usize;
+            let width = (header.width >> i).max(1);
+            let height = (header.height >> i).max(1);
+
+            if length == 0 || offset + length > buf.len() {
+                continue;
+            }
+
+            let mut slice_cursor = Cursor::new(&buf[offset..offset + length]);
+            let mipmap = Mipmap::read_direct(&mut slice_cursor, width, height, &palette, header.alpha_bits)?;
+            mipmaps[i] = mipmap;
+        }
+
+        Ok(())
     }
 }
