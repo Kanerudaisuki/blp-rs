@@ -9,11 +9,12 @@ mod scan {
     use std::path::{Path, PathBuf};
     use walkdir::WalkDir;
 
+    const DEST_DIR: &str = "/Users/nazarpunk/IdeaProjects/War3.mpq/extract";
     const OUT_DIR: &str = "test-data/scan";
 
     #[test]
     fn scan() {
-        let dest = Path::new("/Users/nazarpunk/IdeaProjects/War3.mpq/extract");
+        let dest = Path::new(DEST_DIR);
         let out = Path::new(OUT_DIR);
 
         if out.exists() {
@@ -46,7 +47,7 @@ mod scan {
             }
 
             let mut buf = vec![0u8; HEADER_SIZE as usize];
-            if fs::File::open(path)
+            if File::open(path)
                 .and_then(|mut f| f.read_exact(&mut buf))
                 .is_err()
             {
@@ -134,5 +135,55 @@ mod scan {
         }
 
         println!("Conversion done.");
+    }
+
+    #[test]
+    fn all() {
+        use std::fs;
+        use std::path::Path;
+        use walkdir::WalkDir;
+
+        let dir = Path::new(DEST_DIR);
+        assert!(dir.exists(), "Directory does not exist: {}", DEST_DIR);
+
+        let mut total = 0;
+        let mut failed = 0;
+
+        for entry in WalkDir::new(dir)
+            .into_iter()
+            .filter_map(Result::ok)
+        {
+            let path = entry.path();
+            if path
+                .extension()
+                .map(|ext| ext.eq_ignore_ascii_case("blp"))
+                != Some(true)
+            {
+                continue;
+            }
+
+            total += 1;
+
+            let data = match fs::read(path) {
+                Ok(data) => data,
+                Err(e) => {
+                    eprintln!("Failed to read {:?}: {}", path, e);
+                    failed += 1;
+                    continue;
+                }
+            };
+
+            match ImageBlp::from_bytes(&data) {
+                Ok(_) => {}
+                Err(e) => {
+                    eprintln!("Failed to parse {:?}: {}", path, e);
+                    failed += 1;
+                }
+            }
+        }
+
+        println!("Total BLP files: {}", total);
+        println!("Parsed successfully: {}", total - failed);
+        println!("Failed to parse: {}", failed);
     }
 }

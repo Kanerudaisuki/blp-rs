@@ -97,6 +97,8 @@ impl ImageBlp {
             ];
         }
 
+        let mut max_data_end = 0;
+
         for i in 0..16 {
             let offset = header.mipmap_offsets[i] as usize;
             let length = header.mipmap_lengths[i] as usize;
@@ -110,6 +112,14 @@ impl ImageBlp {
             let mut slice_cursor = Cursor::new(&buf[offset..offset + length]);
             let mipmap = Mipmap::read_direct(&mut slice_cursor, width, height, &palette, header.alpha_bits)?;
             mipmaps[i] = mipmap;
+
+            max_data_end = max_data_end.max(offset + length);
+        }
+
+        let read_header_end = cursor.position() as usize;
+        let total_used = max_data_end.max(read_header_end);
+        if total_used != buf.len() {
+            println!("Warning: file size = {}, but used only {} bytes ({} extra or missing)", buf.len(), total_used, buf.len() as isize - total_used as isize);
         }
 
         Ok(())
