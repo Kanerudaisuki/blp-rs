@@ -284,12 +284,12 @@ mod scan {
         println!("\n🔹 JPEG Stats");
         println!("   • Count              : {}", jpeg_total);
         println!("   • Total size         : {}", fmt_bytes(jpeg_total_size));
-        println!("   • Holes              : {} ({} files, avg = {} bytes)", jpeg_holes, jpeg_with_holes, if jpeg_with_holes > 0 { jpeg_holes / jpeg_with_holes } else { 0 });
+        println!("   • Holes              : {} ({} files, avg = {} bytes)", fmt_bytes(jpeg_holes), jpeg_with_holes, if jpeg_with_holes > 0 { jpeg_holes / jpeg_with_holes } else { 0 });
 
         println!("\n🔹 DIRECT Stats");
         println!("   • Count              : {}", direct_total);
         println!("   • Total size         : {}", fmt_bytes(direct_total_size));
-        println!("   • Holes              : {} ({} files, avg = {} bytes)", direct_holes, direct_with_holes, if direct_with_holes > 0 { direct_holes / direct_with_holes } else { 0 });
+        println!("   • Holes              : {} ({} files, avg = {} bytes)", fmt_bytes(direct_holes), direct_with_holes, if direct_with_holes > 0 { direct_holes / direct_with_holes } else { 0 });
 
         print_resolution_stats("JPEG decode performance", &jpeg_by_res);
         print_resolution_stats("DIRECT decode performance", &direct_by_res);

@@ -32,7 +32,12 @@ impl Mipmap {
         let mut image = RgbaImage::new(dec_w, dec_h);
         for (i, pixel) in image.pixels_mut().enumerate() {
             let idx = i * 4;
-            *pixel = Rgba([255u8.saturating_sub(pixels[idx + 2]), 255u8.saturating_sub(pixels[idx + 1]), 255u8.saturating_sub(pixels[idx + 0]), 255u8.saturating_sub(pixels[idx + 3])]);
+            *pixel = Rgba([
+                255u8.saturating_sub(pixels[idx + 2]), //
+                255u8.saturating_sub(pixels[idx + 1]),
+                255u8.saturating_sub(pixels[idx + 0]),
+                255u8.saturating_sub(pixels[idx + 3]),
+            ]);
         }
 
         Ok(Mipmap { width: dec_w, height: dec_h, image: Some(image) })
