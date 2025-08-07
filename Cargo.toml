@@ -14,10 +14,8 @@ walkdir = "2.5.0"
 clap = { version = "4.5.43", features = ["derive"] }
 rfd = "0.15.4"
 arboard = "3.6.0"
-winit = "0.30.12"
 egui = "0.32.0"
-egui-winit = "0.32.0"
-egui-wgpu = { version = "0.32.0", features = ["winit"] }
+eframe = "0.32.0"
 
 [[bin]]
 name = "blp_rs"

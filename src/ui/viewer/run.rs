@@ -1,54 +1,34 @@
+use eframe::egui::{self, CentralPanel, ViewportBuilder};
 use std::path::PathBuf;
 
-use winit::event_loop::EventLoop;
-use winit::{
-    application::ApplicationHandler,
-    dpi::PhysicalSize,
-    event::WindowEvent,
-    event_loop::ActiveEventLoop,
-    window::{Window, WindowAttributes, WindowId},
-};
-
 pub fn run_ui(_path: Option<PathBuf>) {
-    let mut app = App::new();
-    let event_loop = EventLoop::new().unwrap(); // распаковываем Result
-    event_loop
-        .run_app(&mut app)
-        .expect("Can't run event loop");
+    let options = eframe::NativeOptions {
+        viewport: ViewportBuilder::default()
+            .with_title("BLP Viewer")
+            .with_inner_size([800.0, 600.0]),
+        ..Default::default()
+    };
+
+    eframe::run_native(
+        "blp-rs", //
+        options,
+        Box::new(|_cc| -> Result<Box<dyn eframe::App>, _> { Ok(Box::new(App)) }),
+    )
+    .expect("failed to run eframe");
 }
 
-pub struct App {
-    window: Option<Window>,
-}
+struct App;
 
-impl App {
-    pub fn new() -> Self {
-        Self { window: None }
-    }
-}
-
-impl ApplicationHandler for App {
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let window = event_loop
-            .create_window(WindowAttributes::default().with_title("blp-rs"))
-            .expect("Failed to create window");
-
-        let _ = window.request_inner_size(PhysicalSize::new(800, 600));
-        self.window = Some(window);
-    }
-
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
-        match event {
-            WindowEvent::CloseRequested => {
-                event_loop.exit();
+impl eframe::App for App {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        CentralPanel::default().show(ctx, |ui| {
+            if ui.button("🔄 Refresh").clicked() {
+                // по желанию:
+                // ctx.request_repaint();
             }
-            WindowEvent::RedrawRequested => {
-                // Вставляй свою отрисовку здесь
-                if let Some(window) = &self.window {
-                    window.request_redraw(); // повторный redraw
-                }
+            if ui.button("❌ Exit").clicked() {
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             }
-            _ => {}
-        }
+        });
     }
 }
