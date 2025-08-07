@@ -1,3 +1,4 @@
+use crate::ui::viewer::run::run_ui;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -14,7 +15,6 @@ enum Command {
 
     Convert { path: PathBuf },
 }
-use crate::ui::run_ui::run_ui;
 
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     match Cli::try_parse() {
@@ -29,10 +29,11 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         },
 
         Err(_) => {
+            println!("run");
             let path = std::env::args_os()
                 .nth(1)
                 .map(PathBuf::from);
-            run_ui(path)?; // ✅
+            run_ui(path);
         }
     }
 

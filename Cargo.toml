@@ -12,8 +12,12 @@ byteorder = "1.5.0"
 jpeg-decoder = "0.3.2"
 walkdir = "2.5.0"
 clap = { version = "4.5.43", features = ["derive"] }
-eframe = "0.32.0"
 rfd = "0.15.4"
+arboard = "3.6.0"
+winit = "0.30.12"
+egui = "0.32.0"
+egui-winit = "0.32.0"
+egui-wgpu = { version = "0.32.0", features = ["winit"] }
 
 [[bin]]
 name = "blp_rs"
