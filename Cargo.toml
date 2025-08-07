@@ -11,6 +11,13 @@ num_enum = "0.7.4"
 byteorder = "1.5.0"
 jpeg-decoder = "0.3.2"
 walkdir = "2.5.0"
+clap = { version = "4.5.43", features = ["derive"] }
+eframe = "0.32.0"
+rfd = "0.15.4"
+
+[[bin]]
+name = "blp_rs"
+path = "main.rs"
 
 [lib]
 name = "blp_rs"

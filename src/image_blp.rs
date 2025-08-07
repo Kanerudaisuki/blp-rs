@@ -75,13 +75,7 @@ impl ImageBlp {
             prev_end = prev_end.max(*end);
         }
 
-        holes += buf
-            .len()
-            .saturating_sub(prev_end as usize);
-
-        if holes > 0 {
-            //eprintln!("Warning: file has {} unused bytes (holes)", holes);
-        }
+        holes += buf.len().saturating_sub(prev_end);
 
         match header.texture_type {
             TextureType::JPEG => Self::fill_jpeg(&mut cursor, &header, slices, &mut mipmaps)?,
