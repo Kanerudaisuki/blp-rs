@@ -1,7 +1,6 @@
+use crate::ui::load_image::load_image;
 use eframe::egui;
 use egui::{ColorImage, TextureHandle};
-use image::DynamicImage;
-use image::ImageReader;
 use std::path::PathBuf;
 
 pub struct ViewerApp {
@@ -53,21 +52,4 @@ impl eframe::App for ViewerApp {
             }
         });
     }
-}
-
-fn load_image(path: &PathBuf) -> Result<ColorImage, image::ImageError> {
-    let img = ImageReader::open(path)?.decode()?;
-    Ok(dynamic_image_to_color_image(&img))
-}
-
-fn dynamic_image_to_color_image(img: &DynamicImage) -> ColorImage {
-    let rgba = img.to_rgba8();
-    let [w, h] = [rgba.width() as usize, rgba.height() as usize];
-
-    let pixels = rgba
-        .chunks(4)
-        .map(|p| egui::Color32::from_rgba_premultiplied(p[0], p[1], p[2], p[3]))
-        .collect();
-
-    ColorImage { size: [w, h], pixels, source_size: egui::vec2(w as f32, h as f32) }
 }
