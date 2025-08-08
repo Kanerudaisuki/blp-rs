@@ -1,12 +1,22 @@
 use crate::ui::viewer::fonts::install_fonts::install_fonts;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct App {
+    pub bg_seed: u64,
     pub(crate) maximized: bool,
 }
 
 impl App {
     pub fn new(ctx: &egui::Context) -> Self {
-        let app = Self { maximized: false };
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+
+        let app = Self {
+            maximized: false, //
+            bg_seed: (nanos as u64) ^ ((nanos >> 64) as u64),
+        };
         install_fonts(ctx);
         app
     }

@@ -1,10 +1,10 @@
 pub(crate) use crate::ui::viewer::app::App;
+use crate::ui::viewer::theme::apply_cyberpunk_style::apply_cyberpunk_style;
+use crate::ui::viewer::theme::paint_bg_maze_with_grain::paint_bg_maze_with_grain;
 use eframe::Renderer;
-use eframe::egui::{self, CentralPanel, ViewportBuilder};
+use eframe::egui::{self, ViewportBuilder};
 use egui::SidePanel;
 use std::path::PathBuf;
-use crate::ui::viewer::theme::apply_cyberpunk_style::apply_cyberpunk_style;
-use crate::ui::viewer::theme::paint_cyber_grid::paint_cyber_grid;
 
 pub fn run_ui(_path: Option<PathBuf>) {
     let options = eframe::NativeOptions {
@@ -31,20 +31,21 @@ pub fn run_ui(_path: Option<PathBuf>) {
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         apply_cyberpunk_style(ctx);
+        paint_bg_maze_with_grain(ctx, self.bg_seed); // стабильный фон по сидy
 
         // 💠 Топбар — твой кастомный
         self.draw_title_bar(ctx);
 
         // ◀ Левая панель: фикс ширина, свой цвет/рамка
         let left_frame = egui::Frame {
-            fill: egui::Color32::from_rgba_unmultiplied(14, 24, 36, 230),
-            stroke: egui::Stroke::new(1.0, egui::Color32::from_rgb(0, 220, 255)),
+            //fill: egui::Color32::from_rgba_unmultiplied(14, 24, 36, 230), //
+            //stroke: egui::Stroke::new(1.0, egui::Color32::from_rgb(0, 220, 255)),
             inner_margin: egui::Margin::same(8),
             outer_margin: egui::Margin::same(6),
             ..Default::default()
         };
 
-        egui::SidePanel::left("left_panel")
+        SidePanel::left("left_panel")
             .resizable(false)
             .exact_width(260.0)
             .frame(left_frame)
@@ -60,19 +61,16 @@ impl eframe::App for App {
 
         // ▶ Центральный контент: фон‑сетка + скролл
         egui::CentralPanel::default()
-            .frame(egui::Frame {
-                fill: egui::Color32::from_rgba_unmultiplied(8, 14, 20, 220),
-                inner_margin: egui::Margin::same(10),
-                ..Default::default()
-            })
+            .frame(egui::Frame { fill: egui::Color32::from_rgba_unmultiplied(8, 14, 20, 220), inner_margin: egui::Margin::same(10), ..Default::default() })
             .show(ctx, |ui| {
-                paint_cyber_grid(ui);
-
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.heading("🧩 Dashboard");
                     ui.add_space(6.0);
 
-                    if ui.add(egui::Button::new("⚡ Refresh")).clicked() {
+                    if ui
+                        .add(egui::Button::new("⚡ Refresh"))
+                        .clicked()
+                    {
                         // ...
                     }
                     ui.add_space(8.0);
@@ -82,7 +80,10 @@ impl eframe::App for App {
                     }
 
                     ui.add_space(8.0);
-                    if ui.add(egui::Button::new("⏻ Exit")).clicked() {
+                    if ui
+                        .add(egui::Button::new("⏻ Exit"))
+                        .clicked()
+                    {
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                     }
                 });
