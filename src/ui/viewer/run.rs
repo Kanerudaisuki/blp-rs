@@ -1,4 +1,6 @@
-use eframe::egui::{self, CentralPanel, TopBottomPanel, ViewportBuilder};
+pub(crate) use crate::ui::viewer::app::App;
+use eframe::Renderer;
+use eframe::egui::{self, CentralPanel, ViewportBuilder};
 use std::path::PathBuf;
 
 pub fn run_ui(_path: Option<PathBuf>) {
@@ -7,40 +9,31 @@ pub fn run_ui(_path: Option<PathBuf>) {
             .with_title("BLP Viewer")
             .with_inner_size([800.0, 600.0])
             .with_decorations(false), // 👈 без рамок и заголовка
-                                      // .with_transparent(true)    // 👈 если надо прозрачное окно
-                                      // .with_always_on_top(true)  // 👈 если нужно поверх всех
+        // .with_transparent(true)    // 👈 если надо прозрачное окно
+        // .with_always_on_top(true)  // 👈 если нужно поверх всех
+        renderer: Renderer::Wgpu, // << Metal по умолчанию на macOS
         ..Default::default()
     };
 
-    eframe::run_native("blp-rs", options, Box::new(|_cc| -> Result<Box<dyn eframe::App>, _> { Ok(Box::new(App)) })).expect("failed to run eframe");
-}
+    eframe::run_native(
+        "blp-rs",
+        options,
+        Box::new(|cc| -> Result<Box<dyn eframe::App>, _> {
+            Ok(Box::new(App::new(&cc.egui_ctx))) //
+        }),
 
-struct App;
+    )
+    .expect("failed to run eframe");
+}
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Импровизированная "титулка" для перетаскивания окна
-        TopBottomPanel::top("drag_bar").show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.label("BLP Viewer");
-                // ЛКМ по этой кнопке — начать перетаскивание окна
-                if ui
-                    .button("⠿")
-                    .is_pointer_button_down_on()
-                {
-                    ctx.send_viewport_cmd(egui::ViewportCommand::StartDrag);
-                }
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("✖").clicked() {
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                    }
-                });
-            });
-        });
+        // Рисуем шапку
+        self.draw_title_bar(ctx);
 
+        // Основное содержимое
         CentralPanel::default().show(ctx, |ui| {
-            if ui.button("🔄 Refresh").clicked() {
-                // что-то делаем; при необходимости форсим перерисовку:
+            if ui.button("🔄 Refresh Хуй пизда").clicked() {
                 // ctx.request_repaint();
             }
             if ui.button("❌ Exit").clicked() {

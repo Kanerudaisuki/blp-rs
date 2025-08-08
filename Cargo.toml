@@ -15,7 +15,7 @@ clap = { version = "4.5.43", features = ["derive"] }
 rfd = "0.15.4"
 arboard = "3.6.0"
 egui = "0.32.0"
-eframe = "0.32.0"
+eframe = { version = "0.32.0", features = ["wgpu"] }
 
 [[bin]]
 name = "blp_rs"
