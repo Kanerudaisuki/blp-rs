@@ -1,6 +1,6 @@
 pub(crate) use crate::ui::viewer::app::App;
 use crate::ui::viewer::theme::apply_cyberpunk_style::apply_cyberpunk_style;
-use crate::ui::viewer::theme::paint_bg_maze_with_grain::paint_bg_maze_with_grain;
+use crate::ui::viewer::theme::paint_bg_neon_maze::paint_bg_neon_maze;
 use eframe::Renderer;
 use eframe::egui::{self, ViewportBuilder};
 use egui::SidePanel;
@@ -31,7 +31,7 @@ pub fn run_ui(_path: Option<PathBuf>) {
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         apply_cyberpunk_style(ctx);
-        paint_bg_maze_with_grain(ctx, self.bg_seed); // стабильный фон по сидy
+        paint_bg_neon_maze(ctx, self.bg_seed); // стабильный фон по сидy
 
         // 💠 Топбар — твой кастомный
         self.draw_title_bar(ctx);
