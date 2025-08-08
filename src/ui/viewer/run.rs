@@ -1,7 +1,10 @@
 pub(crate) use crate::ui::viewer::app::App;
 use eframe::Renderer;
 use eframe::egui::{self, CentralPanel, ViewportBuilder};
+use egui::SidePanel;
 use std::path::PathBuf;
+use crate::ui::viewer::theme::apply_cyberpunk_style::apply_cyberpunk_style;
+use crate::ui::viewer::theme::paint_cyber_grid::paint_cyber_grid;
 
 pub fn run_ui(_path: Option<PathBuf>) {
     let options = eframe::NativeOptions {
@@ -21,24 +24,68 @@ pub fn run_ui(_path: Option<PathBuf>) {
         Box::new(|cc| -> Result<Box<dyn eframe::App>, _> {
             Ok(Box::new(App::new(&cc.egui_ctx))) //
         }),
-
     )
     .expect("failed to run eframe");
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Рисуем шапку
+        apply_cyberpunk_style(ctx);
+
+        // 💠 Топбар — твой кастомный
         self.draw_title_bar(ctx);
 
-        // Основное содержимое
-        CentralPanel::default().show(ctx, |ui| {
-            if ui.button("🔄 Refresh Хуй пизда").clicked() {
-                // ctx.request_repaint();
-            }
-            if ui.button("❌ Exit").clicked() {
-                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-            }
-        });
+        // ◀ Левая панель: фикс ширина, свой цвет/рамка
+        let left_frame = egui::Frame {
+            fill: egui::Color32::from_rgba_unmultiplied(14, 24, 36, 230),
+            stroke: egui::Stroke::new(1.0, egui::Color32::from_rgb(0, 220, 255)),
+            inner_margin: egui::Margin::same(8),
+            outer_margin: egui::Margin::same(6),
+            ..Default::default()
+        };
+
+        egui::SidePanel::left("left_panel")
+            .resizable(false)
+            .exact_width(260.0)
+            .frame(left_frame)
+            .show(ctx, |ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.heading("◉ Modules");
+                    ui.separator();
+                    for i in 0..24 {
+                        ui.add(egui::Button::new(format!("> Item #{i}")));
+                    }
+                });
+            });
+
+        // ▶ Центральный контент: фон‑сетка + скролл
+        egui::CentralPanel::default()
+            .frame(egui::Frame {
+                fill: egui::Color32::from_rgba_unmultiplied(8, 14, 20, 220),
+                inner_margin: egui::Margin::same(10),
+                ..Default::default()
+            })
+            .show(ctx, |ui| {
+                paint_cyber_grid(ui);
+
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    ui.heading("🧩 Dashboard");
+                    ui.add_space(6.0);
+
+                    if ui.add(egui::Button::new("⚡ Refresh")).clicked() {
+                        // ...
+                    }
+                    ui.add_space(8.0);
+
+                    for i in 0..120 {
+                        ui.label(format!("log[{i:03}] :: system ping ok;"));
+                    }
+
+                    ui.add_space(8.0);
+                    if ui.add(egui::Button::new("⏻ Exit")).clicked() {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                });
+            });
     }
 }

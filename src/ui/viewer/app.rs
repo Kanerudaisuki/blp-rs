@@ -1,3 +1,5 @@
+use crate::ui::viewer::fonts::install_fonts::install_fonts;
+
 pub struct App {
     pub(crate) maximized: bool,
 }
@@ -5,8 +7,7 @@ pub struct App {
 impl App {
     pub fn new(ctx: &egui::Context) -> Self {
         let app = Self { maximized: false };
-        app.install_fonts_and_style(ctx);
-        app.apply_global_style(ctx);
+        install_fonts(ctx);
         app
     }
 }
