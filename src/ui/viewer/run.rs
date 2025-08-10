@@ -3,7 +3,7 @@ use crate::ui::viewer::theme::apply_cyberpunk_style::apply_cyberpunk_style;
 use crate::ui::viewer::theme::paint_bg_neon_maze::paint_bg_neon_maze;
 use eframe::Renderer;
 use eframe::egui::{self, ViewportBuilder};
-use egui::SidePanel;
+use egui::{SidePanel, Stroke};
 use std::path::PathBuf;
 
 pub fn run_ui(_path: Option<PathBuf>) {
@@ -36,19 +36,17 @@ impl eframe::App for App {
         // 💠 Топбар — твой кастомный
         self.draw_title_bar(ctx);
 
-        // ◀ Левая панель: фикс ширина, свой цвет/рамка
-        let left_frame = egui::Frame {
-            //fill: egui::Color32::from_rgba_unmultiplied(14, 24, 36, 230), //
-            //stroke: egui::Stroke::new(1.0, egui::Color32::from_rgb(0, 220, 255)),
-            inner_margin: egui::Margin::same(8),
-            outer_margin: egui::Margin::same(6),
-            ..Default::default()
-        };
-
         SidePanel::left("left_panel")
             .resizable(false)
             .exact_width(260.0)
-            .frame(left_frame)
+            .frame(egui::Frame {
+                //fill: egui::Color32::from_rgba_unmultiplied(14, 24, 36, 230), //
+                //stroke: egui::Stroke::new(1.0, egui::Color32::from_rgb(0, 220, 255)),
+                inner_margin: egui::Margin::same(8),
+                outer_margin: egui::Margin::same(6),
+                stroke: Stroke::NONE,
+                ..Default::default()
+            })
             .show(ctx, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.heading("◉ Modules");
@@ -61,7 +59,11 @@ impl eframe::App for App {
 
         // ▶ Центральный контент: фон‑сетка + скролл
         egui::CentralPanel::default()
-            .frame(egui::Frame { fill: egui::Color32::from_rgba_unmultiplied(8, 14, 20, 220), inner_margin: egui::Margin::same(10), ..Default::default() })
+            .frame(egui::Frame {
+                fill: egui::Color32::from_rgba_unmultiplied(8, 14, 20, 220), //
+                inner_margin: egui::Margin::same(10),
+                ..Default::default()
+            })
             .show(ctx, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.heading("🧩 Dashboard");
