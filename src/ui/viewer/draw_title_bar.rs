@@ -1,36 +1,51 @@
 use crate::ui::viewer::app::App;
-use egui::{self, Align, Color32, Context, Frame, Margin, Pos2, Response, Sense, Shape, Stroke, TopBottomPanel, Ui, Vec2};
+use egui::{self, Align, Color32, Context, CursorIcon, Frame, Margin, Pos2, Response, Sense, Shape, Stroke, TopBottomPanel, Ui, Vec2, ViewportCommand};
 
 impl App {
     pub(crate) fn draw_title_bar(&mut self, ctx: &Context) {
         TopBottomPanel::top("custom_title_bar")
             .exact_height(28.0)
-            .frame(Frame { fill: Color32::from_rgba_unmultiplied(12, 18, 26, 200), inner_margin: Margin::symmetric(8, 4), outer_margin: Margin::ZERO, stroke: Stroke::NONE, ..Default::default() })
+            .frame(Frame {
+                fill: Color32::from_rgba_unmultiplied(10, 180, 250, 60), //
+                inner_margin: Margin::symmetric(6, 2),
+                outer_margin: Margin::ZERO,
+                stroke: Stroke::NONE,
+                ..Default::default()
+            })
             .show(ctx, |ui| {
                 let title_bar_rect = ui.max_rect();
 
                 // справа налево: red → green → yellow
                 let (close_resp, zoom_resp, min_resp) = ui
                     .with_layout(egui::Layout::right_to_left(Align::Center), |ui| {
-                        let close_resp = macos_dot(ui, TrafficKind::Close);
+                        let close_resp = macos_dot(ui, TrafficKind::Close).on_hover_cursor(CursorIcon::PointingHand);
                         ui.add_space(6.0);
-                        let zoom_resp = macos_dot_zoom(ui, self.maximized); // зелёная с треугольниками
+                        let zoom_resp = macos_dot_zoom(ui, self.maximized) // зелёная с треугольниками
+                            .on_hover_cursor(CursorIcon::PointingHand);
                         ui.add_space(6.0);
-                        let min_resp = macos_dot(ui, TrafficKind::Minimize);
+                        let min_resp = macos_dot(ui, TrafficKind::Minimize).on_hover_cursor(CursorIcon::PointingHand);
                         (close_resp, zoom_resp, min_resp)
                     })
                     .inner;
 
                 // действия
                 if min_resp.clicked() {
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+                    ctx.send_viewport_cmd(ViewportCommand::Minimized(true));
                 }
                 if zoom_resp.clicked() {
                     self.maximized = !self.maximized;
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(self.maximized));
+                    ctx.send_viewport_cmd(ViewportCommand::Maximized(self.maximized));
                 }
                 if close_resp.clicked() {
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                    ctx.send_viewport_cmd(ViewportCommand::Close);
+                }
+
+                // курсор "Move" над drag-зоной (всё, кроме кружков)
+                if let Some(p) = ui.input(|i| i.pointer.hover_pos()) {
+                    let over_btns = min_resp.rect.contains(p) || zoom_resp.rect.contains(p) || close_resp.rect.contains(p);
+                    if title_bar_rect.contains(p) && !over_btns {
+                        ui.output_mut(|o| o.cursor_icon = CursorIcon::Grab);
+                    }
                 }
 
                 // drag-area — всё кроме кружков
@@ -39,7 +54,7 @@ impl App {
                     if let Some(pos) = pointer.interact_pos() {
                         let over = min_resp.rect.contains(pos) || zoom_resp.rect.contains(pos) || close_resp.rect.contains(pos);
                         if title_bar_rect.contains(pos) && !over {
-                            ctx.send_viewport_cmd(egui::ViewportCommand::StartDrag);
+                            ctx.send_viewport_cmd(ViewportCommand::StartDrag);
                         }
                     }
                 }
@@ -53,9 +68,10 @@ enum TrafficKind {
     Minimize,
 }
 
+const MACOS_DOT_SIZE: f32 = 18.0;
+
 fn macos_dot(ui: &mut Ui, kind: TrafficKind) -> Response {
-    let diameter = 18.0;
-    let size = Vec2::splat(diameter);
+    let size = Vec2::splat(MACOS_DOT_SIZE);
     let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
     let center = rect.center();
 
@@ -65,22 +81,22 @@ fn macos_dot(ui: &mut Ui, kind: TrafficKind) -> Response {
     };
 
     ui.painter()
-        .circle_filled(center, diameter * 0.5, base);
+        .circle_filled(center, MACOS_DOT_SIZE * 0.5, base);
 
     if resp.hovered() {
         ui.painter()
-            .circle_stroke(center, diameter * 0.5, Stroke { width: 1.0, color: hover_stroke });
+            .circle_stroke(center, MACOS_DOT_SIZE * 0.5, Stroke { width: 1.0, color: hover_stroke });
 
         match kind {
             TrafficKind::Close => {
-                let r = diameter * 0.28;
+                let r = MACOS_DOT_SIZE * 0.28;
                 ui.painter()
                     .line_segment([Pos2::new(center.x - r, center.y - r), Pos2::new(center.x + r, center.y + r)], Stroke { width: 1.5, color: Color32::BLACK });
                 ui.painter()
                     .line_segment([Pos2::new(center.x - r, center.y + r), Pos2::new(center.x + r, center.y - r)], Stroke { width: 1.5, color: Color32::BLACK });
             }
             TrafficKind::Minimize => {
-                let r = diameter * 0.30;
+                let r = MACOS_DOT_SIZE * 0.30;
                 ui.painter()
                     .line_segment([Pos2::new(center.x - r, center.y), Pos2::new(center.x + r, center.y)], Stroke { width: 2.0, color: Color32::BLACK });
             }
@@ -91,10 +107,9 @@ fn macos_dot(ui: &mut Ui, kind: TrafficKind) -> Response {
 }
 
 fn macos_dot_zoom(ui: &mut Ui, inward: bool) -> Response {
-    let d = 18.0;
-    let (rect, resp) = ui.allocate_exact_size(Vec2::splat(d), Sense::click());
+    let (rect, resp) = ui.allocate_exact_size(Vec2::splat(MACOS_DOT_SIZE), Sense::click());
     let c = rect.center();
-    let r = d * 0.5;
+    let r = MACOS_DOT_SIZE * 0.5;
 
     // круг
     ui.painter()

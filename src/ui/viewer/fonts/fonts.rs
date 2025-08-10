@@ -1,6 +1,3 @@
-use egui::{Context, FontData, FontDefinitions, FontFamily};
-use std::sync::Arc;
-
 /// Названия шрифтовых гарнитур
 #[derive(Clone, Copy)]
 pub enum FontFace {
@@ -28,4 +25,3 @@ pub const FONT_BYTES: &[(FontFace, &[u8])] = &[
     (FontFace::Bold, include_bytes!("ttf/JetBrainsMono-Bold.ttf")),
     (FontFace::Italic, include_bytes!("ttf/JetBrainsMono-Italic.ttf")),
 ];
-
