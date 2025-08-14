@@ -1,27 +1,56 @@
 use crate::ui::viewer::app::App;
-use egui::{self, Align, Color32, Context, CursorIcon, Frame, Margin, Pos2, Response, Sense, Shape, Stroke, TopBottomPanel, Ui, Vec2, ViewportCommand};
+use egui::{self, Align, Color32, Context, CursorIcon, FontId, Frame, Margin, Pos2, Response, Sense, Shape, Stroke, TopBottomPanel, Ui, Vec2, ViewportCommand};
 
 impl App {
     pub(crate) fn draw_title_bar(&mut self, ctx: &Context) {
         TopBottomPanel::top("custom_title_bar")
             .exact_height(28.0)
-            .frame(Frame {
-                fill: Color32::from_rgba_unmultiplied(10, 180, 250, 60), //
-                inner_margin: Margin::symmetric(6, 2),
-                outer_margin: Margin::ZERO,
-                stroke: Stroke::NONE,
-                ..Default::default()
-            })
+            .frame(Frame { fill: Color32::from_rgba_unmultiplied(10, 180, 250, 60), inner_margin: Margin::ZERO, outer_margin: Margin::ZERO, stroke: Stroke::NONE, ..Default::default() })
             .show(ctx, |ui| {
                 let title_bar_rect = ui.max_rect();
 
-                // справа налево: red → green → yellow
+                // --- ЛЕВЫЙ БЕЙДЖ "blp-rs" со скошенным правым краем ---
+                let label_text = "blp-rs";
+                let font = FontId::proportional(16.0);
+                let galley = ui.fonts(|f| f.layout_no_wrap(label_text.to_string(), font.clone(), Color32::WHITE));
+
+                // позиция текста: слева с отступом, по центру по вертикали
+                let pad_x = 10.0;
+                let pad_y = 3.0;
+                let text_pos = Pos2::new(
+                    title_bar_rect.left() + pad_x, // немного отступаем от края панели
+                    title_bar_rect.center().y - galley.size().y * 0.5,
+                );
+
+                // фон-бейдж: полигон с диагональным правым краем
+                let x0 = text_pos.x - pad_x;
+                let y0 = text_pos.y - pad_y;
+                let x1 = text_pos.x + galley.size().x + pad_x;
+                let y1 = text_pos.y + galley.size().y + pad_y;
+                let slope = 12.0; // «скос» правого края
+
+                let pts = vec![
+                    Pos2::new(x0, y0),              // левый верх
+                    Pos2::new(x1 - slope, y0),      // правый верх со сдвигом
+                    Pos2::new(x1, (y0 + y1) * 0.5), // «носик» по центру справа
+                    Pos2::new(x1 - slope, y1),      // правый низ со сдвигом
+                    Pos2::new(x0, y1),              // левый низ
+                ];
+                ui.painter().add(Shape::convex_polygon(
+                    pts,
+                    Color32::from_rgba_unmultiplied(10, 180, 250, 80), // насыщённее, чем фон панели
+                    Stroke::NONE,
+                ));
+                ui.painter()
+                    .galley(text_pos, galley, Color32::WHITE);
+
+                // --- СПРАВА: red → green → yellow ---
                 let (close_resp, zoom_resp, min_resp) = ui
                     .with_layout(egui::Layout::right_to_left(Align::Center), |ui| {
+                        ui.add_space(6.0);
                         let close_resp = macos_dot(ui, TrafficKind::Close).on_hover_cursor(CursorIcon::PointingHand);
                         ui.add_space(6.0);
-                        let zoom_resp = macos_dot_zoom(ui, self.maximized) // зелёная с треугольниками
-                            .on_hover_cursor(CursorIcon::PointingHand);
+                        let zoom_resp = macos_dot_zoom(ui, self.maximized).on_hover_cursor(CursorIcon::PointingHand);
                         ui.add_space(6.0);
                         let min_resp = macos_dot(ui, TrafficKind::Minimize).on_hover_cursor(CursorIcon::PointingHand);
                         (close_resp, zoom_resp, min_resp)
@@ -40,7 +69,7 @@ impl App {
                     ctx.send_viewport_cmd(ViewportCommand::Close);
                 }
 
-                // курсор "Move" над drag-зоной (всё, кроме кружков)
+                // курсор "Grab/Move" над drag-зоной (всё, кроме кружков)
                 if let Some(p) = ui.input(|i| i.pointer.hover_pos()) {
                     let over_btns = min_resp.rect.contains(p) || zoom_resp.rect.contains(p) || close_resp.rect.contains(p);
                     if title_bar_rect.contains(p) && !over_btns {
