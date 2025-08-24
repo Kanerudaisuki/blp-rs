@@ -3,7 +3,6 @@ use crate::ui::viewer::theme::apply_cyberpunk_style::apply_cyberpunk_style;
 use crate::ui::viewer::theme::paint_bg_neon_maze::paint_bg_neon_maze;
 use eframe::Renderer;
 use eframe::egui::{self, ViewportBuilder};
-use egui::{SidePanel, Stroke};
 use std::path::PathBuf;
 
 pub fn run_ui(_path: Option<PathBuf>) {
@@ -31,64 +30,9 @@ pub fn run_ui(_path: Option<PathBuf>) {
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         apply_cyberpunk_style(ctx);
-        paint_bg_neon_maze(ctx, self.bg_seed); // стабильный фон по сидy
-
-        // 💠 Топбар — твой кастомный
+        paint_bg_neon_maze(ctx, self.bg_seed);
         self.draw_title_bar(ctx);
-
-        SidePanel::left("left_panel")
-            .resizable(false)
-            .exact_width(260.0)
-            .frame(egui::Frame {
-                //fill: egui::Color32::from_rgba_unmultiplied(14, 24, 36, 230), //
-                //stroke: egui::Stroke::new(1.0, egui::Color32::from_rgb(0, 220, 255)),
-                inner_margin: egui::Margin::same(8),
-                outer_margin: egui::Margin::same(6),
-                stroke: Stroke::NONE,
-                ..Default::default()
-            })
-            .show(ctx, |ui| {
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.heading("◉ Modules");
-                    ui.separator();
-                    for i in 0..24 {
-                        ui.add(egui::Button::new(format!("> Item #{i}")));
-                    }
-                });
-            });
-
-        // ▶ Центральный контент: фон‑сетка + скролл
-        egui::CentralPanel::default()
-            .frame(egui::Frame {
-                fill: egui::Color32::from_rgba_unmultiplied(8, 14, 20, 220), //
-                inner_margin: egui::Margin::same(10),
-                ..Default::default()
-            })
-            .show(ctx, |ui| {
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.heading("🧩 Dashboard");
-                    ui.add_space(6.0);
-
-                    if ui
-                        .add(egui::Button::new("⚡ Refresh"))
-                        .clicked()
-                    {
-                        // ...
-                    }
-                    ui.add_space(8.0);
-
-                    for i in 0..120 {
-                        ui.label(format!("log[{i:03}] :: system ping ok;"));
-                    }
-
-                    ui.add_space(8.0);
-                    if ui
-                        .add(egui::Button::new("⏻ Exit"))
-                        .clicked()
-                    {
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                    }
-                });
-            });
+        self.draw_file_picker_bar(ctx);
+        self.draw_left_right_panels(ctx);
     }
 }

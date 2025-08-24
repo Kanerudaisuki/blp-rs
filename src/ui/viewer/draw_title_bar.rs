@@ -1,11 +1,15 @@
 use crate::ui::viewer::app::App;
-use egui::{self, Align, Color32, Context, CursorIcon, FontId, Frame, Margin, Pos2, Response, Sense, Shape, Stroke, TopBottomPanel, Ui, Vec2, ViewportCommand};
+use egui::{self, Align, Color32, Context, CursorIcon, FontId, Frame, Pos2, Response, Sense, Shape, Stroke, TopBottomPanel, Ui, Vec2, ViewportCommand};
 
 impl App {
     pub(crate) fn draw_title_bar(&mut self, ctx: &Context) {
         TopBottomPanel::top("custom_title_bar")
-            .exact_height(28.0)
-            .frame(Frame { fill: Color32::from_rgba_unmultiplied(10, 180, 250, 60), inner_margin: Margin::ZERO, outer_margin: Margin::ZERO, stroke: Stroke::NONE, ..Default::default() })
+            .show_separator_line(false)
+            .exact_height(30.0)
+            .frame(Frame {
+                fill: Color32::from_rgba_unmultiplied(8, 32, 44, 200), //
+                ..Default::default()
+            })
             .show(ctx, |ui| {
                 let title_bar_rect = ui.max_rect();
 
