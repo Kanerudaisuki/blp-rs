@@ -1,7 +1,7 @@
 use crate::ui::viewer::app::App;
 use eframe::epaint::Color32;
 use egui::{self, Align, CornerRadius, Frame, Key, Layout, Margin, RichText, Stroke, TopBottomPanel};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 impl App {
     pub(crate) fn draw_file_picker_bar(&mut self, ctx: &egui::Context) {
@@ -29,7 +29,7 @@ impl App {
             })
             .show(ctx, |ui| {
                 ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                    if ui.button("📂 Выбрать…").clicked() {
+                    if ui.button("Select…").clicked() {
                         self.open_file_dialog();
                     }
                     ui.add_space(8.0);
@@ -37,7 +37,7 @@ impl App {
                     if let Some(p) = &self.picked_file {
                         ui.label(RichText::new(Self::path_short(p, 72)).monospace());
                     } else {
-                        ui.label(RichText::new("Перетащи файл сюда или нажми «Выбрать…»").italics());
+                        ui.label(RichText::new("Drag the file here or click “Select...”").italics());
                     }
 
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -49,9 +49,9 @@ impl App {
 
     fn open_file_dialog(&mut self) {
         let mut dlg = rfd::FileDialog::new()
-            .set_title("Выбрать файл")
+            .set_title("Select file")
             .add_filter("BLP/PNG/JPG", &["blp", "png", "jpg", "jpeg"])
-            .add_filter("Все файлы", &["*"]);
+            .add_filter("All files", &["*"]);
 
         // стартовая директория: рядом с уже выбранным файлом, иначе cwd
         if let Some(dir) = self
@@ -65,15 +65,6 @@ impl App {
 
         if let Some(path) = dlg.pick_file() {
             self.set_initial_file(Some(path));
-        }
-    }
-
-    pub(crate) fn set_initial_file(&mut self, p: Option<PathBuf>) {
-        if let Some(p) = p {
-            if p.exists() {
-                self.picked_file = Some(p.clone());
-                // TODO: загрузка/декод файла
-            }
         }
     }
 

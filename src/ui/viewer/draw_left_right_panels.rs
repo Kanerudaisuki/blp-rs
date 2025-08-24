@@ -14,9 +14,7 @@ impl App {
                     .id_salt("left_scroll")
                     .show(ui, |ui| {
                         let _ = ui.allocate_exact_size(egui::vec2(ui.available_width(), 0.0), egui::Sense::hover());
-                        for i in 0..80 {
-                            ui.label(format!("• item {i:02}"));
-                        }
+                        // ---
                     });
             });
 
@@ -28,8 +26,14 @@ impl App {
                     .id_salt("right_scroll")
                     .show(ui, |ui| {
                         let _ = ui.allocate_exact_size(egui::vec2(ui.available_width(), 0.0), egui::Sense::hover());
-                        for i in 0..200 {
-                            ui.monospace(format!("log[{i:04}] :: system ping ok;"));
+                        // ---
+
+                        if let Some(tex) = &self.preview_tex {
+                            ui.add(egui::Image::from_texture((tex.id(), tex.size_vec2())).max_size(ui.available_size()));
+                        } else if self.loading {
+                            ui.label("⏳ decoding…");
+                        } else if let Some(e) = &self.last_err {
+                            ui.colored_label(egui::Color32::from_rgb(255, 120, 120), e);
                         }
                     });
             });

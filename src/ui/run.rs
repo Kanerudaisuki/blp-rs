@@ -1,4 +1,4 @@
-use crate::ui::viewer::run::run_ui;
+use crate::ui::viewer::run_native::run_native;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -12,7 +12,6 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Command {
     Info { path: PathBuf },
-
     Convert { path: PathBuf },
 }
 
@@ -29,11 +28,10 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         },
 
         Err(_) => {
-            println!("run");
             let path = std::env::args_os()
                 .nth(1)
                 .map(PathBuf::from);
-            run_ui(path);
+            run_native(path);
         }
     }
 
