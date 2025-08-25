@@ -7,3 +7,4 @@ pub(crate) mod run_native;
 pub(super) mod theme;
 pub mod update;
 mod set_initial_file;
+mod mipmap_button_row;

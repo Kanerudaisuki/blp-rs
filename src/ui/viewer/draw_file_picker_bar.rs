@@ -1,6 +1,6 @@
 use crate::ui::viewer::app::App;
 use eframe::epaint::Color32;
-use egui::{self, Align, CornerRadius, Frame, Key, Layout, Margin, RichText, Stroke, TopBottomPanel};
+use egui::{self, Align, Frame, Key, Layout, Margin, RichText, Stroke, TopBottomPanel};
 use std::path::Path;
 
 impl App {
@@ -11,20 +11,21 @@ impl App {
             }
         }
 
-        // Cmd/Ctrl+O
-        let open_hotkey = ctx.input(|i| i.key_pressed(Key::O) && i.modifiers.command);
-        if open_hotkey {
+        if ctx.input(|i| i.key_pressed(Key::O) && i.modifiers.command) {
             self.open_file_dialog();
         }
+
+        let style = ctx.style();
+        let spx_f = style.spacing.item_spacing.x;
+        let spx_i = spx_f as i8;
 
         TopBottomPanel::top("file_picker_bar")
             .show_separator_line(false)
             .frame(Frame {
                 fill: Color32::from_rgba_unmultiplied(8, 32, 44, 192), //
                 stroke: Stroke::new(1.0, Color32::from_rgba_unmultiplied(0, 220, 255, 128)),
-                outer_margin: Margin { top: 10, left: 10, right: 10, bottom: 0 },
-                corner_radius: CornerRadius::same(8),
-                inner_margin: Margin::symmetric(10, 8), //
+                outer_margin: Margin { top: spx_i, left: spx_i, right: spx_i, bottom: 0 },
+                inner_margin: Margin::symmetric(spx_i, spx_i),
                 ..Default::default()
             })
             .show(ctx, |ui| {

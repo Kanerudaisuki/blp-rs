@@ -45,8 +45,8 @@ pub fn apply_cyberpunk_style(ctx: &egui::Context) {
     v.error_fg_color = Color32::from_rgb(255, 80, 120);
 
     style.visuals = v;
-    style.spacing.item_spacing = egui::vec2(8.0, 6.0);
-    style.spacing.button_padding = egui::vec2(10.0, 6.0);
+    style.spacing.item_spacing = vec2(8.0, 6.0);
+    style.spacing.button_padding = vec2(10.0, 6.0);
 
     ctx.set_style(style);
 }

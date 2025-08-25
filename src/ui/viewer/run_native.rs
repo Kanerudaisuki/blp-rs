@@ -9,7 +9,7 @@ pub fn run_native(path: Option<PathBuf>) {
         eframe::NativeOptions {
             viewport: ViewportBuilder::default()
                 .with_title("blp-rs")
-                .with_inner_size([800.0, 600.0])
+                .with_inner_size([800.0, 684.0])
                 .with_decorations(false), // 👈 без рамок и заголовка
             // .with_transparent(true)    // 👈 если надо прозрачное окно
             // .with_always_on_top(true)  // 👈 если нужно поверх всех
