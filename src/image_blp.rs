@@ -23,8 +23,8 @@ impl ImageBlp {
 
         let mut mipmaps = (0..16)
             .map(|i| {
-                let w = (header.width >> i).max(1);
-                let h = (header.height >> i).max(1);
+                let w = (header.width >> i).max(0);
+                let h = (header.height >> i).max(0);
                 Mipmap { width: w, height: h, image: None }
             })
             .collect::<Vec<_>>();
