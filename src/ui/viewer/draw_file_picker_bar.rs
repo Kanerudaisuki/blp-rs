@@ -1,6 +1,6 @@
 use crate::ui::viewer::app::App;
 use eframe::epaint::Color32;
-use egui::{self, Align, Frame, Key, Layout, Margin, RichText, Stroke, TopBottomPanel};
+use egui::{self, Align, Frame, Key, Layout, Margin, RichText, TopBottomPanel};
 use std::path::Path;
 
 impl App {
@@ -23,7 +23,7 @@ impl App {
             .show_separator_line(false)
             .frame(Frame {
                 fill: Color32::from_rgba_unmultiplied(8, 32, 44, 192), //
-                stroke: Stroke::new(1.0, Color32::from_rgba_unmultiplied(0, 220, 255, 128)),
+                stroke: style.visuals.widgets.inactive.bg_stroke,
                 outer_margin: Margin { top: spx_i, left: spx_i, right: spx_i, bottom: 0 },
                 inner_margin: Margin::symmetric(spx_i, spx_i),
                 ..Default::default()

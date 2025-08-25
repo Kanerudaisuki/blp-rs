@@ -39,6 +39,15 @@ pub fn apply_cyberpunk_style(ctx: &egui::Context) {
         fg_stroke: Stroke::new(1.0, fg),
         expansion: 0.0,
     };
+    v.widgets.noninteractive = WidgetVisuals {
+        bg_fill: Default::default(),
+        bg_stroke: Stroke::new(1.0, Color32::from_rgba_unmultiplied(0, 220, 255, 128)), //
+        weak_bg_fill: Default::default(),
+        corner_radius: Default::default(),
+        fg_stroke: Stroke::new(1.0, fg),
+        expansion: 0.0,
+    };
+
     v.selection = Selection { bg_fill: Color32::from_rgba_unmultiplied(0, 220, 255, 80), stroke: Stroke::new(1.0, cyan) };
     v.hyperlink_color = cyan;
     v.warn_fg_color = mag;

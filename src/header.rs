@@ -6,7 +6,7 @@ use std::io::Cursor;
 
 pub const HEADER_SIZE: u64 = 156;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Header {
     pub version: Version,
     pub texture_type: TextureType,

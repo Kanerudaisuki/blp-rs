@@ -1,4 +1,4 @@
-use crate::header::{HEADER_SIZE, Header};
+pub(crate) use crate::header::{HEADER_SIZE, Header};
 use crate::mipmap::Mipmap;
 use crate::texture_type::TextureType;
 use byteorder::{LittleEndian, ReadBytesExt};

@@ -9,7 +9,8 @@ impl eframe::App for App {
         self.draw_title_bar(ctx);
         self.draw_file_picker_bar(ctx);
         if self.picked_file.is_some() {
-            self.draw_left_right_panels(ctx);
+            self.draw_panel_left(ctx);
+            self.draw_panel_right(ctx);
         }
         self.poll_decoder(ctx);
     }
