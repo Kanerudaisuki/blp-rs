@@ -1,6 +1,6 @@
 use crate::ui::viewer::app::App;
 use eframe::Renderer;
-use egui::ViewportBuilder;
+use egui::{Vec2, ViewportBuilder};
 use std::path::PathBuf;
 
 // ===== Настройки окна (load/save) — локальный модуль =====
@@ -91,13 +91,38 @@ pub fn run_native(path: Option<PathBuf>) {
     eframe::run_native(
         "blp-rs",
         eframe::NativeOptions {
-            viewport: ViewportBuilder::default()
-                .with_title("blp-rs")
-                .with_inner_size(initial_size)
-                .with_min_inner_size([480.0, 320.0]) // чтобы не схлопывалось в труху
-                .with_decorations(false), // 👈 без рамок и заголовка
-            // .with_transparent(true)
-            // .with_always_on_top(true)
+            viewport: ViewportBuilder {
+                title: Some("blp-rs".to_string()), //
+                app_id: None,
+                position: None,
+                inner_size: Some(Vec2::from(initial_size)),
+                min_inner_size: None,
+                max_inner_size: None,
+                clamp_size_to_monitor_size: Some(true),
+                fullscreen: None,
+                maximized: None,
+                resizable: Some(true),
+                transparent: None,
+                decorations: Some(false),
+                icon: None,
+                active: None,
+                visible: None,
+                fullsize_content_view: None,
+                movable_by_window_background: None,
+                title_shown: None,
+                titlebar_buttons_shown: None,
+                titlebar_shown: None,
+                has_shadow: None,
+                drag_and_drop: None,
+                taskbar: None,
+                close_button: None,
+                minimize_button: None,
+                maximize_button: None,
+                window_level: None,
+                mouse_passthrough: None,
+                window_type: None,
+            },
+
             renderer: Renderer::Wgpu, // Metal на macOS, Vulkan/DX/GL — где доступно
             ..Default::default()
         },

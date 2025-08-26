@@ -1,7 +1,9 @@
 pub(crate) use crate::ui::viewer::app::App;
+use crate::ui::viewer::resize_corner_br::resize_corner_br;
 use crate::ui::viewer::theme::apply_cyberpunk_style::apply_cyberpunk_style;
 use crate::ui::viewer::theme::paint_bg_neon_maze::paint_bg_neon_maze;
 use eframe::egui::{self};
+
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         apply_cyberpunk_style(ctx);
@@ -13,5 +15,7 @@ impl eframe::App for App {
             self.draw_panel_right(ctx);
         }
         self.poll_decoder(ctx);
+
+        resize_corner_br(ctx);
     }
 }

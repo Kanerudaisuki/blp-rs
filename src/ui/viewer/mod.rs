@@ -8,3 +8,4 @@ pub(super) mod theme;
 pub mod update;
 mod set_initial_file;
 mod draw_panel_right;
+mod resize_corner_br;
