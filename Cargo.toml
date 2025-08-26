@@ -27,3 +27,13 @@ path = "main.rs"
 [lib]
 name = "blp_rs"
 path = "src/lib.rs"
+
+[package.metadata.bundle]
+name = "blp-rs"
+identifier = "com.blp.blp-rs"
+#icon = ["assets/icon.icns"]          # опционально
+#resources = ["assets"]               # опционально
+category = "public.app-category.developer-tools"
+short_description = "BLP viewer"
+# macOS-специфика:
+osx_minimum_system_version = "10.13"
