@@ -1,4 +1,5 @@
 pub(crate) use crate::ui::viewer::app::App;
+#[allow(unused_imports)]
 use crate::ui::viewer::resize_corner_br::resize_corner_br;
 use crate::ui::viewer::theme::apply_cyberpunk_style::apply_cyberpunk_style;
 use crate::ui::viewer::theme::paint_bg_neon_maze::paint_bg_neon_maze;
@@ -16,6 +17,7 @@ impl eframe::App for App {
         }
         self.poll_decoder(ctx);
 
+        #[cfg(not(target_os = "macos"))]
         resize_corner_br(ctx);
     }
 }
