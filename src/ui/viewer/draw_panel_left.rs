@@ -5,7 +5,7 @@ impl App {
     pub(crate) fn draw_panel_left(&mut self, ctx: &egui::Context) {
         SidePanel::left("left_mips")
             .resizable(false)
-            .exact_width(260.0)
+            .exact_width(180.0)
             .show_separator_line(false)
             .frame(Frame { inner_margin: Margin::same(0), ..Default::default() })
             .show(ctx, |ui| {
@@ -63,7 +63,6 @@ pub fn mipmap_button_row(ui: &mut Ui, on: &mut bool, i: usize, w: u32, h: u32) -
     let row_h = ui.spacing().interact_size.y;
     let pad_l = 8.0; // внешний слева
     let pad_r = 8.0; // внешний справа
-    let gap = 12.0; // прозрачный зазор по центру
     let inner = 6.0; // отступ текста от кромки своей половины
 
     // фон/hover/press — как у обычной кнопки
@@ -78,8 +77,8 @@ pub fn mipmap_button_row(ui: &mut Ui, on: &mut bool, i: usize, w: u32, h: u32) -
     // зоны слева/справа от центрального зазора
     let rect = resp.rect;
     let cx = rect.center().x;
-    let left = egui::Rect::from_min_max(egui::pos2(rect.left() + pad_l, rect.top()), egui::pos2((cx - gap * 0.5).max(rect.left() + pad_l), rect.bottom()));
-    let right = egui::Rect::from_min_max(egui::pos2((cx + gap * 0.5).min(rect.right() - pad_r), rect.top()), egui::pos2(rect.right() - pad_r, rect.bottom()));
+    let left = egui::Rect::from_min_max(egui::pos2(rect.left() + pad_l, rect.top()), egui::pos2(cx.max(rect.left() + pad_l), rect.bottom()));
+    let right = egui::Rect::from_min_max(egui::pos2(cx.min(rect.right() - pad_r), rect.top()), egui::pos2(rect.right() - pad_r, rect.bottom()));
 
     // цвет/шрифт под состояние
     let vis = &ui.style().visuals.widgets;
