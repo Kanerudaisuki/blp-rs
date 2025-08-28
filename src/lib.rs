@@ -6,4 +6,5 @@ pub mod version;
 pub mod ui;
 pub mod run;
 mod util;
+mod decode;
 
