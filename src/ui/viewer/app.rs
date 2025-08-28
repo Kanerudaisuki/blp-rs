@@ -11,7 +11,6 @@ pub struct App {
     pub picked_file: Option<PathBuf>,
     pub loading: bool,
     pub last_err: Option<String>,
-    pub is_blp: bool,
     pub blp: Option<ImageBlp>,
     pub selected_mip: usize,
     pub mip_textures: Vec<Option<egui::TextureHandle>>, // len == 16
@@ -33,7 +32,6 @@ impl App {
             decode_rx: None,
             loading: false,
             last_err: None,
-            is_blp: false,
             blp: None,
             selected_mip: 0,
             mip_textures: vec![None; 16],

@@ -1,7 +1,9 @@
 pub(crate) use crate::header::{HEADER_SIZE, Header};
 use crate::mipmap::Mipmap;
 use crate::texture_type::TextureType;
+use crate::util::center_crop_to_pow2::center_crop_to_pow2;
 use byteorder::{LittleEndian, ReadBytesExt};
+use image::imageops::{FilterType, resize};
 use std::error::Error;
 use std::io::{Cursor, Read};
 
@@ -14,6 +16,59 @@ pub struct ImageBlp {
 
 impl ImageBlp {
     pub fn from_bytes(buf: &[u8]) -> Result<Self, Box<dyn Error + Send + Sync>> {
+        if buf.len() >= 3 && &buf[..3] == b"BLP" {
+            // 👉 Тут вызываем настоящий парсер BLP
+            return Self::parse_blp(buf);
+        }
+
+        // 👉 Иначе пробуем открыть через image crate
+        let img = image::load_from_memory(buf)
+            .map_err(|e| format!("raster decode failed: {e}"))?
+            .to_rgba8();
+
+        let (w, h) = img.dimensions();
+        if w == 0 || h == 0 {
+            return Err("raster image has zero width or height".into());
+        }
+
+        // Центр-кропим под степени двойки
+        let cropped = center_crop_to_pow2(&img);
+
+        // Делаем mip-цепочку до 1
+        let (mut w, mut h) = cropped.dimensions();
+        let mut chain = Vec::with_capacity(16);
+        chain.push(cropped.clone());
+        while (w > 1 && h > 1) && chain.len() < 16 {
+            let nw = (w / 2).max(1);
+            let nh = (h / 2).max(1);
+            let next = resize(chain.last().unwrap(), nw, nh, FilterType::Triangle);
+            chain.push(next);
+            w = nw;
+            h = nh;
+            if w == 1 || h == 1 {
+                break; // стоп на 2×1 / 1×N или естественный 1×1 (из квадрата)
+            }
+        }
+
+        let mut mipmaps: Vec<Mipmap> = chain
+            .into_iter()
+            .map(|im| {
+                let (w, h) = im.dimensions();
+                Mipmap { width: w, height: h, image: Some(im) }
+            })
+            .collect();
+
+        if mipmaps.len() > 16 {
+            mipmaps.truncate(16);
+        }
+        while mipmaps.len() < 16 {
+            mipmaps.push(Mipmap::default());
+        }
+
+        Ok(ImageBlp { header: Header { width: w, height: h, ..Default::default() }, mipmaps, holes: 0 })
+    }
+
+    fn parse_blp(buf: &[u8]) -> Result<Self, Box<dyn Error + Send + Sync>> {
         let mut cursor = Cursor::new(buf);
         let header = Header::parse(&mut cursor)?;
 
@@ -23,9 +78,11 @@ impl ImageBlp {
 
         let mut mipmaps = (0..16)
             .map(|i| {
-                let w = (header.width >> i).max(0);
-                let h = (header.height >> i).max(0);
-                Mipmap { width: w, height: h, image: None }
+                Mipmap {
+                    width: (header.width >> i).max(0), //
+                    height: (header.height >> i).max(0),
+                    image: None,
+                }
             })
             .collect::<Vec<_>>();
 

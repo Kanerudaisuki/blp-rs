@@ -1,11 +1,12 @@
 pub(super) mod app;
 mod draw_file_picker_bar;
-mod draw_panel_left;
+mod draw_panel_right;
 pub(super) mod draw_title_bar;
 pub(super) mod fonts;
 pub(crate) mod run_native;
 pub(super) mod theme;
 pub mod update;
 mod set_initial_file;
-mod draw_panel_right;
+mod draw_panel_center;
 mod resize_corner_br;
+mod draw_panel_left;

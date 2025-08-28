@@ -1,140 +1,108 @@
 use crate::ui::viewer::app::App;
-use egui::epaint::MarginF32;
-use egui::{self, Align, CentralPanel, Color32, Frame, Label, Layout, Margin, ScrollArea, Sense, Stroke, Ui, UiBuilder};
+use egui::{self, Align2, Button, Frame, Margin, Response, ScrollArea, Sense, SidePanel, TextStyle, Ui};
 
 impl App {
-    #[inline]
-    fn mip_size(&self, i: usize) -> (u32, u32) {
-        if self.is_blp {
-            self.blp
-                .as_ref()
-                .and_then(|b| b.mipmaps.get(i))
-                .map(|m| (m.width, m.height))
-                .unwrap_or((0, 0))
-        } else if let Some(Some(tex)) = self.mip_textures.get(i) {
-            let s = tex.size_vec2();
-            (s.x as u32, s.y as u32)
-        } else if let Some(Some(base)) = self.mip_textures.get(0) {
-            let s0 = base.size_vec2();
-            ((s0.x as u32).max(1) >> i, (s0.y as u32).max(1) >> i)
-        } else {
-            (0, 0)
-        }
-    }
-
     pub(crate) fn draw_panel_right(&mut self, ctx: &egui::Context) {
-        CentralPanel::default()
-            .frame(Frame::default())
+        SidePanel::right("right_mips")
+            .resizable(false)
+            .exact_width(180.0)
+            .show_separator_line(false)
+            .frame(Frame { inner_margin: Margin::same(0), ..Default::default() })
             .show(ctx, |ui| {
+                let spx_f = ui.spacing().item_spacing.x;
+                let spx_i = spx_f.round() as i8;
+
                 ScrollArea::vertical()
-                    .id_salt("right_scroll_mips")
+                    .id_salt("left_scroll_mips")
                     .show(ui, |ui| {
-                        let spy = ui.spacing().item_spacing.y;
+                        // горизонтальный внутренний отступ слева/справа
+                        Frame { inner_margin: Margin { left: spx_i, right: spx_i, top: 0, bottom: 0 }, ..Default::default() }.show(ui, |ui| {
+                            ui.add_space(ui.spacing().item_spacing.y * 2.0);
 
-                        ui.add_space(spy * 2.0);
+                            for i in 0..16 {
+                                // ЧИТАЕМ ТОЛЬКО ИЗ ImageBlp
+                                let (w, h) = self
+                                    .blp
+                                    .as_ref()
+                                    .and_then(|b| b.mipmaps.get(i))
+                                    .map(|m| (m.width, m.height))
+                                    .unwrap_or((0, 0));
 
-                        if self.loading {
-                            ui.label("Decoding…");
-                            return;
-                        }
-                        if let Some(err) = &self.last_err {
-                            ui.colored_label(Color32::from_rgb(255, 120, 120), format!("Error: {err}"));
-                            return;
-                        }
-
-                        let pad_lr: i8 = ui.spacing().item_spacing.x.round() as i8;
-                        for i in 0..16 {
-                            if !self.mip_visible[i] {
-                                continue;
+                                mipmap_button_row(ui, &mut self.mip_visible[i], i, w, h);
                             }
 
-                            let (w, h) = self.mip_size(i);
-                            let tex_opt = self
-                                .mip_textures
-                                .get(i)
-                                .and_then(|t| t.as_ref());
+                            // Кнопки All / None, поровну по ширине
+                            let row_h = ui.spacing().interact_size.y;
+                            ui.columns(2, |cols| {
+                                if cols[0]
+                                    .add_sized([cols[0].available_width(), row_h], Button::new("All").wrap())
+                                    .clicked()
+                                {
+                                    self.mip_visible.fill(true);
+                                }
 
-                            // внешний горизонтальный паддинг
-                            Frame { inner_margin: Margin { left: pad_lr, right: pad_lr, top: 0, bottom: 0 }, ..Default::default() }.show(ui, |ui| {
-                                draw_mip_block_columns(ui, i, w, h, tex_opt);
+                                if cols[1]
+                                    .add_sized([cols[1].available_width(), row_h], Button::new("None").wrap())
+                                    .clicked()
+                                {
+                                    self.mip_visible.fill(false);
+                                }
                             });
+                        });
 
-                            ui.add_space(spy);
-                        }
-
-                        // растяжка-строка
+                        // невидимый растягивающий спейсер, чтобы скролл работал корректно
                         let _ = ui.allocate_exact_size(egui::vec2(ui.available_width(), 0.0), Sense::hover());
                     });
             });
     }
 }
 
-fn draw_mip_block_columns(ui: &mut Ui, i: usize, w: u32, h: u32, tex: Option<&egui::TextureHandle>) {
-    let stroke: Stroke = ui
-        .visuals()
-        .widgets
-        .noninteractive
-        .bg_stroke;
+// Кнопка-ряд: пустая кнопка как фон/hover/press; текст рисуем поверх painter’ом.
+// Слева "#NN" прижат к центру справа, справа "WxH" прижат к центру слева.
+pub fn mipmap_button_row(ui: &mut Ui, on: &mut bool, i: usize, w: u32, h: u32) -> Response {
+    let row_h = ui.spacing().interact_size.y;
+    let pad_l = 8.0; // внешний слева
+    let pad_r = 8.0; // внешний справа
+    let inner = 6.0; // отступ текста от кромки своей половины
 
-    // Рамка блока БЕЗ внутренних отступов
-    Frame {
-        stroke, //
-        ..Default::default()
+    // фон/hover/press — как у обычной кнопки
+    let mut btn = Button::new("")
+        .min_size(egui::vec2(ui.available_width(), row_h))
+        .wrap();
+    if *on {
+        btn = btn.fill(ui.visuals().selection.bg_fill);
     }
-    .show(ui, |ui| {
-        let spacing = &mut ui.style_mut().spacing;
-        let ispy = spacing.item_spacing.y;
-        let ispx = spacing.item_spacing.x;
-        spacing.item_spacing.y = 0.0;
+    let resp = ui.add(btn);
 
-        let isy = ui.spacing().interact_size.y;
+    // зоны слева/справа от центрального зазора
+    let rect = resp.rect;
+    let cx = rect.center().x;
+    let left = egui::Rect::from_min_max(egui::pos2(rect.left() + pad_l, rect.top()), egui::pos2(cx.max(rect.left() + pad_l), rect.bottom()));
+    let right = egui::Rect::from_min_max(egui::pos2(cx.min(rect.right() - pad_r), rect.top()), egui::pos2(rect.right() - pad_r, rect.bottom()));
 
-        let (hdr_rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), isy), Sense::hover());
+    // цвет/шрифт под состояние
+    let vis = &ui.style().visuals.widgets;
+    let text_col = if *on {
+        vis.active.fg_stroke.color
+    } else if resp.hovered() {
+        vis.hovered.fg_stroke.color
+    } else {
+        vis.inactive.fg_stroke.color
+    };
+    let font_id = TextStyle::Monospace.resolve(ui.style());
 
-        let mut hdr_ui = ui.new_child(
-            UiBuilder::new()
-                .max_rect(hdr_rect)
-                .layout(Layout::left_to_right(Align::Center)),
-        );
+    // слева: "#NN" — выравниваем по ПРАВОЙ кромке левой области (к центру)
+    let left_pos = egui::pos2(left.right() - inner, left.center().y);
+    ui.painter()
+        .text(left_pos, Align2::RIGHT_CENTER, format!("#{i:02}"), font_id.clone(), text_col);
 
-        hdr_ui.columns(2, |cols| {
-            // Левая колонка: WxH
-            cols[0].with_layout(Layout::left_to_right(Align::Center), |ui| {
-                ui.add_space(8.0); // небольшой левый паддинг
-                ui.add(
-                    Label::new(egui::RichText::new(format!("{w}×{h}")).monospace()).truncate(), // однострочно с …
-                );
-            });
+    // справа: "WxH" — по ЛЕВОЙ кромке правой области (к центру)
+    let right_pos = egui::pos2(right.left() + inner, right.center().y);
+    ui.painter()
+        .text(right_pos, Align2::LEFT_CENTER, format!("{w}×{h}"), font_id, text_col);
 
-            // Правая колонка: #NN (выравниваем вправо)
-            cols[1].with_layout(Layout::right_to_left(Align::Center), |ui| {
-                ui.add_space(8.0); // симметричный зазор от правого края
-                ui.add(Label::new(egui::RichText::new(format!("#{i:02}")).monospace()).truncate());
-            });
-        });
-
-        // Нижний бордер заголовка (pixel-snap, чтобы без «ступенек»)
-        let ppp = ui.ctx().pixels_per_point();
-        let y = (hdr_rect.bottom() * ppp).round() / ppp;
-        ui.painter()
-            .hline(hdr_rect.x_range(), y, stroke);
-
-        // ── Content: картинка или "no image" ──────────────────────────────
-        if let Some(tex) = tex {
-            ui.add(egui::Image::from_texture((tex.id(), tex.size_vec2())).max_size(egui::vec2(ui.available_width(), f32::MAX)));
-        } else {
-            Frame {
-                inner_margin: Margin::from(MarginF32 {
-                    left: ispy, //
-                    right: ispy,
-                    top: ispx,
-                    bottom: ispx,
-                }),
-                ..Default::default()
-            }
-            .show(ui, |ui| {
-                ui.label("no image");
-            });
-        }
-    });
+    if resp.clicked() {
+        *on = !*on;
+    }
+    resp
 }

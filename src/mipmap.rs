@@ -2,7 +2,7 @@ use image::{Rgba, RgbaImage};
 use jpeg_decoder::Decoder;
 use std::io::Cursor;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Mipmap {
     pub width: u32,
     pub height: u32,
