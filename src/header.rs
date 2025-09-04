@@ -31,9 +31,19 @@ impl Header {
         let texture_type = TextureType::try_from(texture_type_raw).map_err(|_| "Invalid BLP version")?;
 
         let (compression, alpha_bits, alpha_type, has_mips) = if version >= Version::BLP2 {
-            (cursor.read_u8()?, cursor.read_u8()? as u32, cursor.read_u8()?, cursor.read_u8()?)
+            (
+                cursor.read_u8()?, //
+                cursor.read_u8()? as u32,
+                cursor.read_u8()?,
+                cursor.read_u8()?,
+            )
         } else {
-            (0, cursor.read_u32::<LittleEndian>()?, 0, 0)
+            (
+                0, //
+                cursor.read_u32::<LittleEndian>()?,
+                0,
+                0,
+            )
         };
 
         let width = cursor.read_u32::<LittleEndian>()?;
@@ -59,6 +69,19 @@ impl Header {
             ([0; 16], [0; 16])
         };
 
-        Ok(Header { version, texture_type, compression, alpha_bits, alpha_type, has_mips, width, height, extra, has_mipmaps, mipmap_offsets, mipmap_lengths })
+        Ok(Header {
+            version, //
+            texture_type,
+            compression,
+            alpha_bits,
+            alpha_type,
+            has_mips,
+            width,
+            height,
+            extra,
+            has_mipmaps,
+            mipmap_offsets,
+            mipmap_lengths,
+        })
     }
 }

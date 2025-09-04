@@ -3,5 +3,5 @@
 use blp_rs::run::run;
 
 fn main() {
-    run().expect("Cannot run UI");
+    run().expect("Run error");
 }

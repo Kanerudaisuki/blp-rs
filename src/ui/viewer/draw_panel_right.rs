@@ -50,7 +50,7 @@ impl App {
                             });
                         });
 
-                        // невидимый растягивающий спейсер, чтобы скролл работал корректно
+                        
                         let _ = ui.allocate_exact_size(egui::vec2(ui.available_width(), 0.0), Sense::hover());
                     });
             });
