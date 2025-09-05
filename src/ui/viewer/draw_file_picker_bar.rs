@@ -30,7 +30,7 @@ impl App {
             })
             .show(ctx, |ui| {
                 ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                    if ui.button("Select…").clicked() {
+                    if ui.button("Select").clicked() {
                         self.open_file_dialog();
                     }
                     ui.add_space(8.0);

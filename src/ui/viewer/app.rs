@@ -16,6 +16,9 @@ pub struct App {
     pub mip_textures: Vec<Option<egui::TextureHandle>>, // len == 16
     pub decode_rx: Option<Receiver<DecodeResult>>,
     pub mip_visible: [bool; 16], // init: [true; 16]
+
+    pub current_path: Option<PathBuf>, // откуда файл открыт (если есть)
+    pub save_err: Option<String>,      // показывать ошибку в UI
 }
 
 impl App {
@@ -36,6 +39,8 @@ impl App {
             selected_mip: 0,
             mip_textures: vec![None; 16],
             mip_visible: [true; 16],
+            current_path: None,
+            save_err: None,
         };
         install_fonts(ctx);
         app
