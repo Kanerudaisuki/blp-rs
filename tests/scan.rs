@@ -126,7 +126,7 @@ mod scan {
                 }
             };
 
-            let image = match ImageBlp::from_bytes(&data) {
+            let image = match ImageBlp::from_buf(&data) {
                 Ok(img) => img,
                 Err(e) => {
                     eprintln!("❌ Failed to parse {}: {e}", path.display());
@@ -248,7 +248,7 @@ mod scan {
             };
 
             let decode_start = Instant::now();
-            let result = ImageBlp::from_bytes(&data);
+            let result = ImageBlp::from_buf(&data);
             let decode_time = decode_start.elapsed().as_secs_f64();
 
             match result {

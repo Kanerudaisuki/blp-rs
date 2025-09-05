@@ -7,7 +7,7 @@ use std::error::Error;
 use std::io::Cursor;
 
 impl ImageBlp {
-    pub(crate) fn parse_blp(buf: &[u8]) -> Result<Self, Box<dyn Error + Send + Sync>> {
+    pub(crate) fn from_buf_blp(buf: &[u8]) -> Result<Self, Box<dyn Error + Send + Sync>> {
         // 1) Парсим заголовок
         let mut cursor = Cursor::new(buf);
         let header = Header::parse(&mut cursor)?;

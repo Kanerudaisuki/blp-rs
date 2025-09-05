@@ -1,5 +1,5 @@
 use crate::decode::decode_result::DecodeResult;
-use crate::ui::viewer::file_picker::draw::decode_bytes;
+use crate::image_blp::ImageBlp;
 use std::path::PathBuf;
 
 pub enum DecodeInput {
@@ -14,5 +14,17 @@ pub fn decode_input(input: DecodeInput) -> DecodeResult {
             Err(e) => DecodeResult::Err(format!("Read failed: {e}")),
         },
         DecodeInput::Bytes(data) => decode_bytes(data),
+    }
+}
+fn decode_bytes(data: Vec<u8>) -> DecodeResult {
+    match ImageBlp::from_buf(&data) {
+        Ok(blp) => {
+            if blp.mipmaps.is_empty() {
+                DecodeResult::Err("empty BLP mip chain".into())
+            } else {
+                DecodeResult::Blp(blp)
+            }
+        }
+        Err(e) => DecodeResult::Err(format!("from_bytes failed: {e}")),
     }
 }

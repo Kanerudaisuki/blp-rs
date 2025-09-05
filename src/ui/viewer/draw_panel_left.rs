@@ -1,5 +1,5 @@
-use crate::export::blp::export_blp;
-use crate::export::png::export_png;
+use crate::export::export_blp::export_blp;
+use crate::export::export_png::export_png;
 use crate::ui::viewer::app::App;
 use egui::{self, Frame, Margin, ScrollArea, Sense, SidePanel};
 

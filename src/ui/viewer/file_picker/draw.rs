@@ -1,6 +1,4 @@
-use crate::decode::decode_input::{DecodeInput, decode_input};
-use crate::decode::decode_result::DecodeResult;
-use crate::image_blp::ImageBlp;
+use crate::decode::decode_input::{decode_input, DecodeInput};
 use crate::ui::viewer::app::App;
 use arboard::Clipboard;
 use egui::{self};
@@ -8,7 +6,7 @@ use image::{DynamicImage, ImageFormat};
 use std::collections::BTreeSet;
 use std::io::Cursor;
 use std::path::Path;
-use std::sync::{OnceLock, mpsc};
+use std::sync::{mpsc, OnceLock};
 use std::thread;
 
 impl App {
@@ -194,17 +192,4 @@ fn all_image_exts() -> &'static [&'static str] {
             set.into_iter().collect::<Vec<_>>()
         })
         .as_slice()
-}
-
-pub fn decode_bytes(data: Vec<u8>) -> DecodeResult {
-    match ImageBlp::from_bytes(&data) {
-        Ok(blp) => {
-            if blp.mipmaps.is_empty() {
-                DecodeResult::Err("empty BLP mip chain".into())
-            } else {
-                DecodeResult::Blp(blp)
-            }
-        }
-        Err(e) => DecodeResult::Err(format!("from_bytes failed: {e}")),
-    }
 }

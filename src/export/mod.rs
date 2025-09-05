@@ -1,4 +1,3 @@
-pub mod blp;
-pub mod png;
-mod export;
+pub mod export_blp;
+pub mod export_png;
 pub mod last_dir;

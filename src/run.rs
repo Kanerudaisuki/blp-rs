@@ -1,5 +1,5 @@
-use crate::cli::to_blp_command::to_blp_command;
-use crate::cli::to_png_command::to_png_command;
+use crate::cli::command::to_blp::to_blp;
+use crate::cli::command::to_png::to_png;
 use crate::ui::viewer::run_native::run_native;
 use clap::{Parser, Subcommand, error::ErrorKind};
 use std::error::Error;
@@ -49,10 +49,10 @@ pub fn run() -> Result<(), Box<dyn Error + Send + Sync>> {
             if let Some(cmd) = cli.command {
                 match cmd {
                     Command::ToBlp { input, output } => {
-                        to_blp_command(&input, output.as_ref())?;
+                        to_blp(&input, output.as_ref())?;
                     }
                     Command::ToPng { input, output } => {
-                        to_png_command(&input, output.as_ref())?;
+                        to_png(&input, output.as_ref())?;
                     }
                 }
             } else {

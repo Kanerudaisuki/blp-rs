@@ -6,7 +6,7 @@ use image::imageops::{FilterType, resize};
 use std::error::Error;
 
 impl ImageBlp {
-    pub(crate) fn decode_image(buf: &[u8]) -> Result<Self, Box<dyn Error + Send + Sync>> {
+    pub(crate) fn from_buf_image(buf: &[u8]) -> Result<Self, Box<dyn Error + Send + Sync>> {
         // 1) Декодим в RGBA8
         let img = image::load_from_memory(buf)
             .map_err(|e| format!("raster decode failed: {e}"))?
