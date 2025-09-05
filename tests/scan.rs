@@ -4,10 +4,9 @@ mod scan {
     use blp_rs::image_blp::ImageBlp;
     use blp_rs::texture_type::TextureType;
     use image::{DynamicImage, ImageFormat};
-    use std::collections::HashMap;
     use std::fs::{self, File};
     use std::io::{BufWriter, Cursor, Read};
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
     use walkdir::WalkDir;
 
     const DEST_DIR: &str = "/Users/nazarpunk/IdeaProjects/War3.mpq/extract";
@@ -15,97 +14,122 @@ mod scan {
 
     #[test]
     fn scan() {
-        let dest = Path::new(DEST_DIR);
-        let out = Path::new(OUT_DIR);
+        use std::collections::HashSet;
 
-        if out.exists() {
-            match fs::remove_dir_all(&out) {
-                Ok(_) => {}
-                Err(e) => {
-                    eprintln!("⚠️ Не удалось удалить папку {}: {e}", out.display());
-                    // Можно упасть, если это критично:
-                    // panic!("Can't delete {}", out.display());
-                }
+        let dest = Path::new(DEST_DIR);
+        let out_root = Path::new(OUT_DIR);
+
+        // 1) Чистим целевую директорию
+        if out_root.exists() {
+            if let Err(e) = fs::remove_dir_all(out_root) {
+                eprintln!("⚠️ Не удалось удалить папку {}: {e}", out_root.display());
             }
         }
+        fs::create_dir_all(out_root).unwrap();
 
-        fs::create_dir_all(out).unwrap();
-
-        let mut seen: HashMap<String, PathBuf> = HashMap::new();
+        // 2) Уже отобранные «паспортные» ключи (одна штука на ключ)
+        let mut picked_keys: HashSet<String> = HashSet::new();
+        let mut picked_count = 0usize;
 
         for entry in WalkDir::new(dest)
             .into_iter()
             .filter_map(Result::ok)
         {
             let path = entry.path();
-            if !path.is_file()
-                || path
-                    .extension()
-                    .map(|e| e != "blp")
-                    .unwrap_or(true)
-            {
+            if !path.is_file() {
                 continue;
             }
 
+            let is_blp = path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|e| e.eq_ignore_ascii_case("blp"))
+                .unwrap_or(false);
+            if !is_blp {
+                continue;
+            }
+
+            // читаем заголовок
             let mut buf = vec![0u8; HEADER_SIZE as usize];
-            if File::open(path)
-                .and_then(|mut f| f.read_exact(&mut buf))
-                .is_err()
-            {
+            if let Err(_e) = File::open(path).and_then(|mut f| f.read_exact(&mut buf)) {
                 continue;
             }
-
             let mut cursor = Cursor::new(&buf[..]);
             let header = match Header::parse(&mut cursor) {
                 Ok(h) => h,
                 Err(_) => continue,
             };
 
-            let name = format!("{:?}_tt{}_c{}_ab{}_at{}_m{}_{}x{}.blp", header.version, header.texture_type as u8, header.compression, header.alpha_bits, header.alpha_type, header.has_mips, header.width, header.height,);
+            // ключ уникальности по заголовку
+            let key = format!("{:?}_tt{}_c{}_ab{}_at{}_m{}_{}x{}", header.version, header.texture_type as u8, header.compression, header.alpha_bits, header.alpha_type, header.has_mips, header.width, header.height,);
 
-            if seen.contains_key(&name) {
+            // если уже есть такой ключ — пропускаем
+            if picked_keys.contains(&key) {
                 continue;
             }
 
-            let dst = Path::new(OUT_DIR).join(&name);
+            // создаём папку с именем ключа, если вдруг существует — тоже пропускаем (мы берём только первый)
+            let out_dir = out_root.join(&key);
+            if out_dir.exists() {
+                continue;
+            }
+            if let Err(e) = fs::create_dir_all(&out_dir) {
+                eprintln!("❌ Не удалось создать папку {}: {e}", out_dir.display());
+                continue;
+            }
+
+            // копируем исходный .blp внутрь этой папки под оригинальным именем
+            let dst = out_dir.join(path.file_name().unwrap_or_default());
             if let Err(e) = fs::copy(path, &dst) {
-                eprintln!("Failed to copy {:?} → {:?}: {e}", path, dst);
+                eprintln!("❌ Failed to copy {:?} → {:?}: {e}", path, dst);
+                // удалим пустую папку, чтобы не оставлять мусор
+                let _ = fs::remove_dir_all(&out_dir);
                 continue;
             }
 
-            seen.insert(name, path.to_path_buf());
+            // origin.txt — полезно для отладки
+            let _ = fs::write(out_dir.join("origin.txt"), path.display().to_string());
+
+            picked_keys.insert(key);
+            picked_count += 1;
         }
 
-        println!("Done: {} unique textures copied.", seen.len());
+        println!("Done: picked {} unique textures (one per header key).", picked_count);
     }
 
     #[test]
     fn convert() {
-        let dir = Path::new(OUT_DIR);
-
-        for entry in WalkDir::new(dir)
+        // Конвертим все .blp **внутри их собственных папок** в PNG-мипмапы
+        // PNG кладём рядом, в ту же папку.
+        for entry in WalkDir::new(Path::new(OUT_DIR))
             .into_iter()
             .filter_map(Result::ok)
-            .filter(|e| {
-                e.path()
-                    .extension()
-                    .map(|ext| ext == "blp")
-                    .unwrap_or(false)
-            })
         {
             let path = entry.path();
-            let buf = match fs::read(path) {
-                Ok(b) => b,
+            if !path.is_file() {
+                continue;
+            }
+            let is_blp = path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|e| e.eq_ignore_ascii_case("blp"))
+                .unwrap_or(false);
+            if !is_blp {
+                continue;
+            }
+
+            let data = match fs::read(path) {
+                Ok(d) => d,
                 Err(e) => {
-                    eprintln!("Failed to read {}: {e}", path.display());
+                    eprintln!("❌ Failed to read {}: {e}", path.display());
                     continue;
                 }
             };
 
-            let image = match ImageBlp::from_bytes(&buf) {
+            let image = match ImageBlp::from_bytes(&data) {
                 Ok(img) => img,
                 Err(e) => {
-                    eprintln!("Failed to parse {}: {e}", path.display());
+                    eprintln!("❌ Failed to parse {}: {e}", path.display());
                     continue;
                 }
             };
@@ -114,37 +138,37 @@ mod scan {
                 .file_stem()
                 .unwrap()
                 .to_string_lossy();
+            let parent = path
+                .parent()
+                .unwrap_or_else(|| Path::new(OUT_DIR));
 
-            for mip in &image.mipmaps {
+            for (idx, mip) in image.mipmaps.iter().enumerate() {
                 if let Some(rgba) = &mip.image {
-                    let filename = format!("{stem}_{}x{}.png", mip.width, mip.height);
-                    let output_path = path.with_file_name(filename);
-
+                    // Пример имени: <original>_mip0_256x256.png
+                    let filename = format!("{stem}_mip{idx}_{}x{}.png", mip.width, mip.height);
+                    let output_path = parent.join(filename);
                     match File::create(&output_path) {
                         Ok(file) => {
                             let mut writer = BufWriter::new(file);
                             if let Err(e) = DynamicImage::ImageRgba8(rgba.clone()).write_to(&mut writer, ImageFormat::Png) {
-                                eprintln!("Failed to write PNG {}: {e}", output_path.display());
+                                eprintln!("❌ Failed to write PNG {}: {e}", output_path.display());
                             }
                         }
                         Err(e) => {
-                            eprintln!("Failed to create file {}: {e}", output_path.display());
+                            eprintln!("❌ Failed to create {}: {e}", output_path.display());
                         }
                     }
                 }
             }
         }
 
-        println!("Conversion done.");
+        println!("Conversion done (each BLP has its own folder).");
     }
 
     #[test]
     fn all() {
         use std::collections::BTreeMap;
-        use std::fs;
-        use std::path::Path;
         use std::time::Instant;
-        use walkdir::WalkDir;
 
         fn fmt_bytes(bytes: usize) -> String {
             const UNITS: [&str; 5] = ["bytes", "KiB", "MiB", "GiB", "TiB"];
@@ -162,7 +186,7 @@ mod scan {
             println!("   {:>8}   {:>6}   {:>9}   {:>9}   {:>9}   {:>9}", "Res", "Count", "Avg ms", "Total s", "MP/sec", "MiB/sec");
 
             let mut entries: Vec<_> = map.iter().collect();
-            entries.sort_by_key(|&(res, _)| res.0 * res.1); // sort by area
+            entries.sort_by_key(|&(res, _)| res.0 * res.1);
 
             for ((w, h), &(count, total_time, total_bytes)) in entries {
                 let avg_ms = total_time * 1000.0 / count as f64;
@@ -205,7 +229,8 @@ mod scan {
             let path = entry.path();
             if path
                 .extension()
-                .map(|ext| ext.eq_ignore_ascii_case("blp"))
+                .and_then(|e| e.to_str())
+                .map(|e| e.eq_ignore_ascii_case("blp"))
                 != Some(true)
             {
                 continue;

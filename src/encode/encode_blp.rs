@@ -87,35 +87,35 @@ impl ImageBlp {
 }
 
 // ----------------- helpers -----------------
-
 fn build_mips_from_first(base: &RgbaImage, max_levels: usize) -> Result<Vec<Mipmap>, Box<dyn Error + Send + Sync>> {
     if max_levels == 0 {
         return Err("build_mips_from_first: max_levels must be > 0".into());
     }
-    let mut chain = Vec::with_capacity(max_levels);
-    let mut cur = base.clone();
-    let (mut w, mut h) = (cur.width(), cur.height());
 
-    chain.push(Mipmap { width: w, height: h, image: Some(cur.clone()) });
+    let (mut w, mut h) = base.dimensions();
+    if w == 0 || h == 0 {
+        return Err("build_mips_from_first: base has zero dimension".into());
+    }
 
-    for _ in 1..max_levels {
-        if w == 1 && h == 1 {
-            break;
-        }
+    let mut chain: Vec<Mipmap> = Vec::with_capacity(max_levels);
+    chain.push(Mipmap { width: w, height: h, image: Some(base.clone()) });
+
+    // ↓ ключевая правка: условие до 1×1 (НЕ &&, а ||)
+    while (w > 1 || h > 1) && chain.len() < max_levels {
         let nw = (w / 2).max(1);
         let nh = (h / 2).max(1);
-        let next = image::imageops::resize(&cur, nw, nh, FilterType::Triangle);
-        chain.push(Mipmap { width: nw, height: nh, image: Some(next.clone()) });
-        cur = next;
+        let prev = chain
+            .last()
+            .unwrap()
+            .image
+            .as_ref()
+            .unwrap();
+        let next = image::imageops::resize(prev, nw, nh, FilterType::Triangle);
+        chain.push(Mipmap { width: nw, height: nh, image: Some(next) });
         w = nw;
         h = nh;
-        if w == 1 && h == 1 {
-            break;
-        }
     }
-    if chain.len() > 16 {
-        chain.truncate(16);
-    }
+
     Ok(chain)
 }
 

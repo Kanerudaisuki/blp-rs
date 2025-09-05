@@ -1,61 +1,75 @@
 use crate::cli::to_blp_command::to_blp_command;
 use crate::cli::to_png_command::to_png_command;
 use crate::ui::viewer::run_native::run_native;
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, error::ErrorKind};
 use std::error::Error;
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
-#[command(name = "blp-rs", version, about)]
+#[command(
+    name = "blp-rs",
+    version,
+    about = "BLP ↔ PNG converter and simple viewer for Warcraft III textures",
+    long_about = "blp-rs is a command-line utility for converting Warcraft III textures \
+                  between BLP and PNG formats. It can also launch a native GUI viewer."
+)]
 struct Cli {
+    /// Open the native GUI viewer with this file (used by “Open With…”)
+    ///
+    /// If a subcommand is provided, this argument is ignored.
+    #[arg(value_name = "PATH")]
+    path: Option<PathBuf>,
+
     #[command(subcommand)]
-    command: Command,
+    command: Option<Command>,
 }
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    Help {
-        path: PathBuf,
-    },
-    /// Конвертировать в BLP
+    /// Convert an image into BLP format
     ToBlp {
-        /// Исходный файл (например PNG)
+        /// Input file (e.g. PNG)
         input: PathBuf,
-        /// Опциональный выходной путь. Если не указан — расширение заменяется на .blp
+        /// Optional output path. If not specified, the extension will be replaced with .blp
         output: Option<PathBuf>,
     },
 
-    /// Конвертировать в PNG
+    /// Convert a BLP texture into PNG format
     ToPng {
-        /// Исходный файл (например BLP)
+        /// Input file (e.g. BLP)
         input: PathBuf,
-        /// Опциональный выходной путь. Если не указан — расширение заменяется на .png
+        /// Optional output path. If not specified, the extension will be replaced with .png
         output: Option<PathBuf>,
     },
 }
 
 pub fn run() -> Result<(), Box<dyn Error + Send + Sync>> {
     match Cli::try_parse() {
-        Ok(cli) => match cli.command {
-            Command::Help { path } => {
-                println!("help {}", path.display());
+        Ok(cli) => {
+            if let Some(cmd) = cli.command {
+                match cmd {
+                    Command::ToBlp { input, output } => {
+                        to_blp_command(&input, output.as_ref())?;
+                    }
+                    Command::ToPng { input, output } => {
+                        to_png_command(&input, output.as_ref())?;
+                    }
+                }
+            } else {
+                // Нет подкоманды → GUI режим. path приходит из “Open With…”
+                run_native(cli.path);
             }
-
-            Command::ToBlp { input, output } => {
-                to_blp_command(&input, output.as_ref())?;
+            Ok(())
+        }
+        Err(e) => match e.kind() {
+            ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => {
+                e.print()?;
+                Ok(())
             }
-            Command::ToPng { input, output } => {
-                to_png_command(&input, output.as_ref())?;
+            _ => {
+                e.print()?;
+                std::process::exit(e.exit_code());
             }
         },
-
-        Err(_) => {
-            let path = std::env::args_os()
-                .nth(1)
-                .map(PathBuf::from);
-            run_native(path);
-        }
     }
-
-    Ok(())
 }

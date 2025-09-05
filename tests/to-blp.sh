@@ -1,13 +1,15 @@
 #!/bin/bash
 set -e
 
-ROOT="../test-data/convert"
+C="to-blp"
 
-A="$ROOT/с.png"
-B="$ROOT/с.blp"
+ROOT="../test-data/$C"
+
+A="$ROOT/a.png"
+B="$ROOT/a.blp"
 
 cargo build --release
 
-RUST_BACKTRACE=full ./../target/release/blp_rs to-blp "$A" "$B"
+RUST_BACKTRACE=full ./../target/release/blp_rs "$C" "$A" "$B"
 
 ./../target/release/blp_rs "$B"
