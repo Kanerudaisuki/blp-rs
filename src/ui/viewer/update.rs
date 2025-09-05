@@ -10,7 +10,7 @@ impl eframe::App for App {
         apply_cyberpunk_style(ctx);
         paint_bg_neon_maze(ctx, self.bg_seed);
         self.draw_title_bar(ctx);
-        self.draw_file_picker_bar(ctx);
+        self.file_picker_draw(ctx);
         if self.picked_file.is_some() {
             self.draw_panel_left(ctx);
             self.draw_panel_right(ctx);

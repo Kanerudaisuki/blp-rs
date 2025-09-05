@@ -1,5 +1,5 @@
 use crate::header::Header;
-use crate::image_blp::ImageBlp;
+use crate::image_blp::{ImageBlp, MAX_MIPS};
 use crate::mipmap::Mipmap;
 use byteorder::{LittleEndian, ReadBytesExt};
 use image::{Rgba, RgbaImage};
@@ -21,7 +21,7 @@ impl ImageBlp {
                 let mut level = 0;
                 let mut w = header.width;
                 let mut h = header.height;
-                while level < 16 {
+                while level < MAX_MIPS {
                     if w.max(1) == mipmap.width && h.max(1) == mipmap.height {
                         break;
                     }
@@ -32,7 +32,7 @@ impl ImageBlp {
                     h >>= 1;
                     level += 1;
                 }
-                if level < 16 {
+                if level < MAX_MIPS {
                     mipmaps[level] = mipmap;
                 }
             }

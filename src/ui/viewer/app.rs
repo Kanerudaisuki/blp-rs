@@ -1,9 +1,9 @@
-use crate::image_blp::ImageBlp;
+use crate::image_blp::{ImageBlp, MAX_MIPS};
 use crate::ui::viewer::fonts::install_fonts::install_fonts;
-use crate::ui::viewer::set_initial_file::DecodeResult;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::time::{SystemTime, UNIX_EPOCH};
+use crate::decode::decode_result::DecodeResult;
 
 pub struct App {
     pub bg_seed: u64,
@@ -15,7 +15,7 @@ pub struct App {
     pub selected_mip: usize,
     pub mip_textures: Vec<Option<egui::TextureHandle>>, // len == 16
     pub decode_rx: Option<Receiver<DecodeResult>>,
-    pub mip_visible: [bool; 16], // init: [true; 16]
+    pub mip_visible: [bool; MAX_MIPS], // init: [true; 16]
 
     pub current_path: Option<PathBuf>, // откуда файл открыт (если есть)
     pub save_err: Option<String>,      // показывать ошибку в UI
@@ -37,8 +37,8 @@ impl App {
             last_err: None,
             blp: None,
             selected_mip: 0,
-            mip_textures: vec![None; 16],
-            mip_visible: [true; 16],
+            mip_textures: vec![None; MAX_MIPS],
+            mip_visible: [true; MAX_MIPS],
             current_path: None,
             save_err: None,
         };

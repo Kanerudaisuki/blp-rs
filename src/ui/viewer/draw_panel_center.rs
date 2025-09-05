@@ -1,5 +1,6 @@
 use crate::ui::viewer::app::App;
 use egui::{self, Align, CentralPanel, Color32, Frame, Image, Label, Layout, Margin, RichText, ScrollArea, Sense, Ui, vec2};
+use crate::image_blp::MAX_MIPS;
 
 impl App {
     pub(crate) fn draw_panel_center(&mut self, ctx: &egui::Context) {
@@ -23,7 +24,7 @@ impl App {
                         }
 
                         let pad_lr: i8 = ui.spacing().item_spacing.x.round() as i8;
-                        for i in 0..16 {
+                        for i in 0..MAX_MIPS {
                             if !self.mip_visible[i] {
                                 continue;
                             }

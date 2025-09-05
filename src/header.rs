@@ -1,3 +1,4 @@
+use crate::image_blp::MAX_MIPS;
 use crate::texture_type::TextureType;
 use crate::version::Version;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
@@ -16,10 +17,10 @@ pub struct Header {
     pub has_mips: u8,
     pub width: u32,
     pub height: u32,
-    pub extra: u32,                // meaningful only if version <= BLP1
-    pub has_mipmaps: u32,          // meaningful only if version <= BLP1 or >= BLP2
-    pub mipmap_offsets: [u32; 16], // valid if version >= BLP1
-    pub mipmap_lengths: [u32; 16], // valid if version >= BLP1
+    pub extra: u32,                      // meaningful only if version <= BLP1
+    pub has_mipmaps: u32,                // meaningful only if version <= BLP1 or >= BLP2
+    pub mipmap_offsets: [u32; MAX_MIPS], // valid if version >= BLP1
+    pub mipmap_lengths: [u32; MAX_MIPS], // valid if version >= BLP1
 }
 
 impl Header {
@@ -56,17 +57,17 @@ impl Header {
         };
 
         let (mipmap_offsets, mipmap_lengths) = if version >= Version::BLP1 {
-            let mut offsets = [0u32; 16];
-            let mut lengths = [0u32; 16];
-            for i in 0..16 {
+            let mut offsets = [0u32; MAX_MIPS];
+            let mut lengths = [0u32; MAX_MIPS];
+            for i in 0..MAX_MIPS {
                 offsets[i] = cursor.read_u32::<LittleEndian>()?;
             }
-            for i in 0..16 {
+            for i in 0..MAX_MIPS {
                 lengths[i] = cursor.read_u32::<LittleEndian>()?;
             }
             (offsets, lengths)
         } else {
-            ([0; 16], [0; 16])
+            ([0; MAX_MIPS], [0; MAX_MIPS])
         };
 
         Ok(Header {

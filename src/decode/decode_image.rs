@@ -1,5 +1,5 @@
 use crate::header::Header;
-use crate::image_blp::ImageBlp;
+use crate::image_blp::{ImageBlp, MAX_MIPS};
 use crate::mipmap::Mipmap;
 use crate::util::center_crop_to_pow2::center_crop_to_pow2;
 use image::imageops::{FilterType, resize};
@@ -26,7 +26,7 @@ impl ImageBlp {
         let mut chain = Vec::with_capacity(16);
         chain.push(base.clone());
 
-        while (w > 1 || h > 1) && chain.len() < 16 {
+        while (w > 1 || h > 1) && chain.len() < MAX_MIPS {
             let nw = (w / 2).max(1);
             let nh = (h / 2).max(1);
             let next = resize(chain.last().unwrap(), nw, nh, FilterType::Triangle);
@@ -44,10 +44,10 @@ impl ImageBlp {
             })
             .collect();
 
-        if mipmaps.len() > 16 {
-            mipmaps.truncate(16);
+        if mipmaps.len() > MAX_MIPS {
+            mipmaps.truncate(MAX_MIPS);
         }
-        while mipmaps.len() < 16 {
+        while mipmaps.len() < MAX_MIPS {
             mipmaps.push(Mipmap::default()); // заполняем пустыми
         }
 

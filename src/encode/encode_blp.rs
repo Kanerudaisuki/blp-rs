@@ -4,7 +4,7 @@ use mozjpeg as mj;
 use std::error::Error;
 use std::io::Write;
 
-use crate::image_blp::ImageBlp;
+use crate::image_blp::{ImageBlp, MAX_MIPS};
 use crate::mipmap::Mipmap;
 
 impl ImageBlp {
@@ -19,7 +19,7 @@ impl ImageBlp {
             return Err("encode_blp: invalid base size".into());
         }
 
-        let gen_mips = build_mips_from_first(base, 16)?;
+        let gen_mips = build_mips_from_first(base, MAX_MIPS)?;
 
         // кодируем каждый мип в ПОЛНЫЙ 4-канальный JPEG (каналы = ARGB)
         let mut jpegs: Vec<Vec<u8>> = Vec::with_capacity(gen_mips.len());
@@ -50,12 +50,12 @@ impl ImageBlp {
 
         // таблицы offsets/sizes
         let offsets_pos = out.len();
-        let mut mm_offsets = [0u32; 16];
-        let mut mm_sizes = [0u32; 16];
-        for _ in 0..16 {
+        let mut mm_offsets = [0u32; MAX_MIPS];
+        let mut mm_sizes = [0u32; MAX_MIPS];
+        for _ in 0..MAX_MIPS {
             out.write_u32::<LittleEndian>(0)?;
         }
-        for _ in 0..16 {
+        for _ in 0..MAX_MIPS {
             out.write_u32::<LittleEndian>(0)?;
         }
 

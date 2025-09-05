@@ -129,7 +129,7 @@ pub fn run_native(path: Option<PathBuf>) {
         Box::new(move |cc| -> Result<Box<dyn eframe::App>, _> {
             // создаём твой App как раньше
             let mut app = App::new(&cc.egui_ctx);
-            app.set_initial_file(path);
+            app.set_current_file(path);
 
             // заворачиваем в обёртку с автосейвом размера
             Ok(Box::new(AppWithWindowPersist::new(app)))

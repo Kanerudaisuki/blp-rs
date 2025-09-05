@@ -1,5 +1,5 @@
 use crate::header::{HEADER_SIZE, Header};
-use crate::image_blp::ImageBlp;
+use crate::image_blp::{ImageBlp, MAX_MIPS};
 use crate::mipmap::Mipmap;
 use crate::texture_type::TextureType;
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -8,8 +8,6 @@ use std::io::Cursor;
 
 impl ImageBlp {
     pub(crate) fn parse_blp(buf: &[u8]) -> Result<Self, Box<dyn Error + Send + Sync>> {
-        const MAX_MIPS: usize = 16;
-
         // 1) Парсим заголовок
         let mut cursor = Cursor::new(buf);
         let header = Header::parse(&mut cursor)?;

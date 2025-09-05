@@ -1,5 +1,6 @@
 use crate::ui::viewer::app::App;
 use egui::{self, Align2, Button, Frame, Margin, Response, ScrollArea, Sense, SidePanel, TextStyle, Ui};
+use crate::image_blp::MAX_MIPS;
 
 impl App {
     pub(crate) fn draw_panel_right(&mut self, ctx: &egui::Context) {
@@ -19,7 +20,7 @@ impl App {
                         Frame { inner_margin: Margin { left: spx_i, right: spx_i, top: 0, bottom: 0 }, ..Default::default() }.show(ui, |ui| {
                             ui.add_space(ui.spacing().item_spacing.y * 2.0);
 
-                            for i in 0..16 {
+                            for i in 0..MAX_MIPS {
                                 // ЧИТАЕМ ТОЛЬКО ИЗ ImageBlp
                                 let (w, h) = self
                                     .blp
