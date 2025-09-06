@@ -10,9 +10,6 @@ Oh, and it's part of the WarRaft toolkit — you’ll also find it used together
 with [JASS-Tree-sitter-Rust](https://github.com/WarRaft/JASS-Tree-sitter-Rust),  
 which brings syntax support, analyzers, and more tooling for Warcraft III modding.
 
-Grab binaries here:  
-👉 [Download](https://github.com/WarRaft/blp-rs/tree/main/bin)
-
 Wanna know how BLP works? Dive into the spec:  
 👉 [BLP Specification](https://github.com/WarRaft/BLP)
 
