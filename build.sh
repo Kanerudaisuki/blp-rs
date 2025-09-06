@@ -27,9 +27,11 @@ echo "🔢 Версия: $CURR_VERSION → $NEW_VERSION"
 
 # bump Cargo.toml
 if sed --version &>/dev/null; then
-  sed -E -i "s/^version *= *\"[0-9]+\.[0-9]+\.[0-9]+([^\"]*)?\"/version = \"$NEW_VERSION\"/m" Cargo.toml
+  # GNU sed (Linux)
+  sed -E -i "s/^version *= *\"[0-9]+\.[0-9]+\.[0-9]+([^\"]*)?\"/version = \"$NEW_VERSION\"/" Cargo.toml
 else
-  sed -E -i '' "s/^version *= *\"[0-9]+\.[0-9]+\.[0-9]+([^\"]*)?\"/version = \"$NEW_VERSION\"/m" Cargo.toml
+  # BSD sed (macOS)
+  sed -E -i '' "s/^version *= *\"[0-9]+\.[0-9]+\.[0-9]+([^\"]*)?\"/version = \"$NEW_VERSION\"/" Cargo.toml
 fi
 [[ -f Cargo.lock ]] && cargo generate-lockfile >/dev/null
 
