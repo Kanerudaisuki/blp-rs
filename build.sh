@@ -48,7 +48,7 @@ VERSION="$NEW_VERSION"
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 
-# macOS universal
+# ===== macOS: универсальный бинарь =====
 echo "📦 macOS universal…"
 rustup target add aarch64-apple-darwin x86_64-apple-darwin &>/dev/null || true
 cargo build --release --target aarch64-apple-darwin --bin "$BIN_NAME" --locked
@@ -60,7 +60,7 @@ lipo -create \
   "target/x86_64-apple-darwin/release/$BIN_NAME"
 chmod +x "$MAC_UNI"
 
-# macOS .app (временная папка, не в bin)
+# ===== macOS .app -> zip/dmg (временная .app, не в bin) =====
 APP_NAME="$PROJECT_NAME"
 APP_TMP="$(mktemp -d)/$APP_NAME-macos.app"
 APP_MACOS="$APP_TMP/Contents/MacOS"
@@ -96,7 +96,7 @@ if command -v codesign &>/dev/null; then
   codesign --force --deep --sign - "$APP_TMP" || true
 fi
 
-# только zip и dmg в bin/
+# zip + dmg
 ZIP="$DIST_DIR/$PROJECT_NAME-macos.zip"
 /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP_TMP" "$ZIP"
 
@@ -107,36 +107,32 @@ hdiutil create -quiet \
   -srcfolder "$APP_TMP" \
   -ov -format UDZO "$DMG"
 
-
-# Linux
+# ===== Linux =====
 echo "🐧 Linux…"
 rustup target add x86_64-unknown-linux-musl &>/dev/null || true
 cargo build --release --target x86_64-unknown-linux-musl --bin "$BIN_NAME" --locked
 cp "target/x86_64-unknown-linux-musl/release/$BIN_NAME" "$DIST_DIR/$PROJECT_NAME-linux"
 chmod +x "$DIST_DIR/$PROJECT_NAME-linux"
 
-# Windows
+# ===== Windows =====
 echo "🪟 Windows…"
 rustup target add x86_64-pc-windows-gnu &>/dev/null || true
 cargo build --release --target x86_64-pc-windows-gnu --bin "$BIN_NAME" --locked
 cp "target/x86_64-pc-windows-gnu/release/$BIN_NAME.exe" "$DIST_DIR/$PROJECT_NAME-windows.exe"
 
-# --- checksums ---
+# --- checksums (только файлы, без директорий и без самой SHA256SUMS.txt) ---
 echo "🔐 Checksums…"
 (
   cd "$DIST_DIR"
   rm -f SHA256SUMS.txt
   if command -v shasum &>/dev/null; then
-    # macOS / BSD — только файлы, кроме самого файла с суммами
     find . -maxdepth 1 -type f ! -name 'SHA256SUMS.txt' -exec shasum -a 256 {} \; > SHA256SUMS.txt
   else
-    # Linux
     find . -maxdepth 1 -type f ! -name 'SHA256SUMS.txt' -exec sha256sum {} \; > SHA256SUMS.txt
   fi
 )
 
-
-# release
+# --- release: явный список ассетов ---
 echo "🚀 Release $TAG"
 gh release create "$TAG" \
   "$DIST_DIR/$PROJECT_NAME-macos" \
