@@ -111,17 +111,20 @@ rustup target add x86_64-pc-windows-gnu &>/dev/null || true
 cargo build --release --target x86_64-pc-windows-gnu --bin "$BIN_NAME" --locked
 cp "target/x86_64-pc-windows-gnu/release/$BIN_NAME.exe" "$DIST_DIR/$PROJECT_NAME-windows.exe"
 
-# checksums
+# --- checksums ---
 echo "🔐 Checksums…"
 (
   cd "$DIST_DIR"
   rm -f SHA256SUMS.txt
   if command -v shasum &>/dev/null; then
-    shasum -a 256 * > SHA256SUMS.txt
+    # macOS / BSD
+    find . -maxdepth 1 -type f -exec shasum -a 256 {} \; > SHA256SUMS.txt
   else
-    sha256sum * > SHA256SUMS.txt
+    # Linux
+    find . -maxdepth 1 -type f -exec sha256sum {} \; > SHA256SUMS.txt
   fi
 )
+
 
 # release
 echo "🚀 Release $TAG"
