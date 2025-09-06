@@ -32,10 +32,20 @@ path = "src/lib.rs"
 
 [package.metadata.bundle]
 name = "blp-rs"
-identifier = "com.blp.blp-rs"
-#icon = ["assets/icon.icns"]          # опционально
-#resources = ["assets"]               # опционально
+identifier = "com.warraft.blprs"
 category = "public.app-category.developer-tools"
-short_description = "BLP viewer"
+short_description = "BLP viewer/encoder"
+long_description = "Fast BLP1/BLP2 viewer & tools"
 # macOS-специфика:
 osx_minimum_system_version = "10.13"
+# Указываем СГЕНЕРЁННЫЕ файлы/глоб — и бандлер будет счастлив
+icon = [
+    "assets/generated/AppIcon.icns", # macOS
+    "assets/generated/app.ico", # Windows
+    "assets/generated/icons/hicolor/*/apps/*.png"    # Linux (hicolor)
+]
+
+[build-dependencies]
+image = "0.25.8"
+ico = "0.4.0"
+icns = "0.3.1"   # https://crates.io/crates/icns

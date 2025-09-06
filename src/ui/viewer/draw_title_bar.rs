@@ -6,10 +6,7 @@ impl App {
         TopBottomPanel::top("custom_title_bar")
             .show_separator_line(false)
             .exact_height(30.0)
-            .frame(Frame {
-                fill: Color32::from_rgba_unmultiplied(8, 32, 44, 200), //
-                ..Default::default()
-            })
+            .frame(Frame { fill: Color32::from_rgba_unmultiplied(8, 32, 44, 200), ..Default::default() })
             .show(ctx, |ui| {
                 let title_bar_rect = ui.max_rect();
 
@@ -47,6 +44,19 @@ impl App {
                 ));
                 ui.painter()
                     .galley(text_pos, galley, Color32::WHITE);
+
+                // --- СЛЕДОМ СПРАВА: отдельный бейдж версии ---
+                let ver_text = env!("CARGO_PKG_VERSION");
+                let ver_galley = ui.fonts(|f| f.layout_no_wrap(ver_text.to_string(), font.clone(), Color32::WHITE));
+
+                let ver_gap = 6.0; // зазор между бейджами
+                let ver_text_pos = Pos2::new(
+                    x1 + ver_gap, // начинаем после "blp-rs"
+                    title_bar_rect.center().y - ver_galley.size().y * 0.5,
+                );
+
+                ui.painter()
+                    .galley(ver_text_pos, ver_galley, Color32::WHITE);
 
                 // --- СПРАВА: red → green → yellow ---
                 let (close_resp, zoom_resp, min_resp) = ui
