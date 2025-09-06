@@ -60,21 +60,23 @@ lipo -create \
   "target/x86_64-apple-darwin/release/$BIN_NAME"
 chmod +x "$MAC_UNI"
 
-# macOS .app
+# macOS .app (временная папка, не в bin)
 APP_NAME="$PROJECT_NAME"
-APP_DIR="$DIST_DIR/$APP_NAME-macos.app"
-APP_MACOS="$APP_DIR/Contents/MacOS"
-APP_RES="$APP_DIR/Contents/Resources"
+APP_TMP="$(mktemp -d)/$APP_NAME-macos.app"
+APP_MACOS="$APP_TMP/Contents/MacOS"
+APP_RES="$APP_TMP/Contents/Resources"
 mkdir -p "$APP_MACOS" "$APP_RES"
 cp "$MAC_UNI" "$APP_MACOS/$APP_NAME"
 chmod +x "$APP_MACOS/$APP_NAME"
+
 ICON_SRC="assets/icon.icns"
 ICON_KEY=""
 if [[ -f "$ICON_SRC" ]]; then
   cp "$ICON_SRC" "$APP_RES/icon.icns"
   ICON_KEY="<key>CFBundleIconFile</key><string>icon</string>"
 fi
-cat > "$APP_DIR/Contents/Info.plist" <<PLIST
+
+cat > "$APP_TMP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
@@ -89,14 +91,22 @@ cat > "$APP_DIR/Contents/Info.plist" <<PLIST
   $ICON_KEY
 </dict></plist>
 PLIST
+
 if command -v codesign &>/dev/null; then
-  codesign --force --deep --sign - "$APP_DIR" || true
+  codesign --force --deep --sign - "$APP_TMP" || true
 fi
 
+# только zip и dmg в bin/
 ZIP="$DIST_DIR/$PROJECT_NAME-macos.zip"
-/usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP_DIR" "$ZIP"
+/usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP_TMP" "$ZIP"
+
 DMG="$DIST_DIR/$PROJECT_NAME-macos.dmg"
-hdiutil create -quiet -fs HFS+ -imagekey zlib-level=9 -volname "$APP_NAME" -srcfolder "$APP_DIR" -ov -format UDZO "$DMG"
+hdiutil create -quiet \
+  -fs HFS+ -imagekey zlib-level=9 \
+  -volname "$APP_NAME" \
+  -srcfolder "$APP_TMP" \
+  -ov -format UDZO "$DMG"
+
 
 # Linux
 echo "🐧 Linux…"
@@ -117,18 +127,24 @@ echo "🔐 Checksums…"
   cd "$DIST_DIR"
   rm -f SHA256SUMS.txt
   if command -v shasum &>/dev/null; then
-    # macOS / BSD
-    find . -maxdepth 1 -type f -exec shasum -a 256 {} \; > SHA256SUMS.txt
+    # macOS / BSD — только файлы, кроме самого файла с суммами
+    find . -maxdepth 1 -type f ! -name 'SHA256SUMS.txt' -exec shasum -a 256 {} \; > SHA256SUMS.txt
   else
     # Linux
-    find . -maxdepth 1 -type f -exec sha256sum {} \; > SHA256SUMS.txt
+    find . -maxdepth 1 -type f ! -name 'SHA256SUMS.txt' -exec sha256sum {} \; > SHA256SUMS.txt
   fi
 )
 
 
 # release
 echo "🚀 Release $TAG"
-gh release create "$TAG" "$DIST_DIR"/* \
+gh release create "$TAG" \
+  "$DIST_DIR/$PROJECT_NAME-macos" \
+  "$DIST_DIR/$PROJECT_NAME-macos.zip" \
+  "$DIST_DIR/$PROJECT_NAME-macos.dmg" \
+  "$DIST_DIR/$PROJECT_NAME-linux" \
+  "$DIST_DIR/$PROJECT_NAME-windows.exe" \
+  "$DIST_DIR/SHA256SUMS.txt" \
   --title "$PROJECT_NAME $VERSION" \
   --generate-notes
 
