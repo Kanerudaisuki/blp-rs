@@ -1,6 +1,6 @@
-use crate::ui::viewer::app::App;
-use egui::{self, Align, CentralPanel, Color32, Frame, Image, Label, Layout, Margin, RichText, ScrollArea, Sense, Ui, vec2};
 use crate::image_blp::MAX_MIPS;
+use crate::ui::viewer::app::App;
+use egui::{self, Align, CentralPanel, Frame, Image, Label, Layout, Margin, RichText, ScrollArea, Sense, Ui, vec2};
 
 impl App {
     pub(crate) fn draw_panel_center(&mut self, ctx: &egui::Context) {
@@ -16,10 +16,6 @@ impl App {
 
                         if self.loading {
                             ui.label("Decoding…");
-                            return;
-                        }
-                        if let Some(err) = &self.last_err {
-                            ui.colored_label(Color32::from_rgb(255, 120, 120), format!("Error: {err}"));
                             return;
                         }
 

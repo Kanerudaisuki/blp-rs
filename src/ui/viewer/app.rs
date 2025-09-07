@@ -1,24 +1,23 @@
+use crate::decode::decode_result::DecodeResult;
 use crate::image_blp::{ImageBlp, MAX_MIPS};
 use crate::ui::viewer::fonts::install_fonts::install_fonts;
+use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::time::{SystemTime, UNIX_EPOCH};
-use crate::decode::decode_result::DecodeResult;
 
 pub struct App {
     pub bg_seed: u64,
     pub maximized: bool,
     pub picked_file: Option<PathBuf>,
     pub loading: bool,
-    pub last_err: Option<String>,
+    pub err: Option<String>,
     pub blp: Option<ImageBlp>,
     pub selected_mip: usize,
     pub mip_textures: Vec<Option<egui::TextureHandle>>, // len == 16
     pub decode_rx: Option<Receiver<DecodeResult>>,
     pub mip_visible: [bool; MAX_MIPS], // init: [true; 16]
-
     pub current_path: Option<PathBuf>, // откуда файл открыт (если есть)
-    pub save_err: Option<String>,      // показывать ошибку в UI
 }
 
 impl App {
@@ -34,15 +33,24 @@ impl App {
             picked_file: None,
             decode_rx: None,
             loading: false,
-            last_err: None,
+            err: None,
             blp: None,
             selected_mip: 0,
             mip_textures: vec![None; MAX_MIPS],
             mip_visible: [true; MAX_MIPS],
             current_path: None,
-            save_err: None,
         };
         install_fonts(ctx);
         app
+    }
+
+    #[inline]
+    pub fn err_set<E: Display>(&mut self, err: E) {
+        self.err = Some(err.to_string());
+    }
+
+    #[inline]
+    pub fn err_clear(&mut self) {
+        self.err = None;
     }
 }

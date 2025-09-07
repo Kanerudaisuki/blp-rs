@@ -1,9 +1,42 @@
 use crate::export::export_blp::export_blp;
 use crate::export::export_png::export_png;
+use crate::export::last_dir::{load_last_dir, save_last_dir};
 use crate::ui::viewer::app::App;
 use egui::{self, Frame, Margin, ScrollArea, Sense, SidePanel};
+use std::path::PathBuf;
 
 impl App {
+    fn default_names(&self) -> (String, String) {
+        let stem = self
+            .current_path
+            .as_ref()
+            .and_then(|p| p.file_stem())
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "texture".to_string());
+        (format!("{stem}.blp"), format!("{stem}.png"))
+    }
+
+    fn pick_save_path(&mut self, default_name: &str, ext: &str, desc: &str) -> Option<PathBuf> {
+        let mut dlg = rfd::FileDialog::new()
+            .set_file_name(default_name)
+            .add_filter(desc, &[ext]);
+
+        // приоритет: сохранённая папка → папка текущего файла → дефолт ОС
+        if let Some(dir) = load_last_dir().or_else(|| {
+            self.current_path
+                .as_ref()
+                .and_then(|p| p.parent().map(|pp| pp.to_path_buf()))
+        }) {
+            dlg = dlg.set_directory(dir);
+        }
+
+        let path = dlg.save_file()?;
+        if let Some(parent) = path.parent() {
+            let _ = save_last_dir(parent); // best-effort
+        }
+        Some(path)
+    }
+
     pub(crate) fn draw_panel_left(&mut self, ctx: &egui::Context) {
         SidePanel::left("left_mips")
             .resizable(false)
@@ -38,8 +71,8 @@ impl App {
                                     };
 
                                     match res {
-                                        Ok(()) => self.save_err = None,
-                                        Err(e) => self.save_err = Some(format!("Save BLP failed: {e}")),
+                                        Ok(()) => self.err_clear(),
+                                        Err(e) => self.err_set(e),
                                     }
                                 }
                             }
@@ -58,14 +91,10 @@ impl App {
                                     };
 
                                     match res {
-                                        Ok(()) => self.save_err = None,
-                                        Err(e) => self.save_err = Some(format!("Save PNG failed: {e}")),
+                                        Ok(()) => self.err_clear(),
+                                        Err(e) => self.err_set(e),
                                     }
                                 }
-                            }
-
-                            if let Some(err) = &self.save_err {
-                                ui.colored_label(egui::Color32::from_rgb(255, 120, 120), err);
                             }
                         });
 

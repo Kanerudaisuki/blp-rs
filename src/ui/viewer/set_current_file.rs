@@ -6,20 +6,21 @@ use std::{
 };
 
 use crate::decode::decode_input::{DecodeInput, decode_input};
+use crate::image_blp::MAX_MIPS;
 use crate::ui::viewer::app::App;
 use egui::ColorImage;
-use crate::image_blp::MAX_MIPS;
 
 impl App {
     /// Сохраняем путь и стартуем фоновый декод.
     pub(crate) fn set_current_file(&mut self, p: Option<PathBuf>) {
         if let Some(path) = p {
             if !path.exists() {
+                self.err_set(format!("File not found: {}", path.display()));
                 return;
             }
 
             self.picked_file = Some(path.clone());
-            self.last_err = None;
+            self.err_clear();
             self.blp = None;
             self.selected_mip = 0;
             self.mip_textures.fill_with(|| None);
@@ -46,7 +47,12 @@ impl App {
             match rx.try_recv() {
                 Ok(DecodeResult::Blp(blp)) => {
                     // Заливка текстур только для существующих уровней с картинкой
-                    for (i, m) in blp.mipmaps.iter().enumerate().take(MAX_MIPS) {
+                    for (i, m) in blp
+                        .mipmaps
+                        .iter()
+                        .enumerate()
+                        .take(MAX_MIPS)
+                    {
                         if let Some(img) = &m.image {
                             let (w, h) = (m.width as usize, m.height as usize);
                             let mut ci = ColorImage::from_rgba_unmultiplied([w, h], img.as_raw());
@@ -64,16 +70,16 @@ impl App {
                     self.blp = Some(blp);
                     self.decode_rx = None;
                     self.loading = false;
-                    self.last_err = None;
+                    //self.last_err = None;
                 }
                 Ok(DecodeResult::Err(e)) => {
-                    self.last_err = Some(e);
+                    self.err_set(e);
                     self.decode_rx = None;
                     self.loading = false;
                 }
                 Err(TryRecvError::Empty) => {}
                 Err(TryRecvError::Disconnected) => {
-                    self.last_err = Some("decoder thread disconnected".into());
+                    self.err_set("Decoder thread disconnected.");
                     self.decode_rx = None;
                     self.loading = false;
                 }

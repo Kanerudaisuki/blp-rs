@@ -1,17 +1,48 @@
-use crate::decode::decode_input::{decode_input, DecodeInput};
+use crate::decode::decode_input::{DecodeInput, decode_input};
 use crate::ui::viewer::app::App;
+use crate::ui::viewer::file_picker::all_image_exts::all_image_exts;
 use arboard::Clipboard;
-use egui::{self};
+use egui::{self, Align, Color32, Context, CursorIcon, Event, Frame, Key, KeyboardShortcut, Layout, Margin, Modifiers, RichText, TopBottomPanel};
 use image::{DynamicImage, ImageFormat};
-use std::collections::BTreeSet;
 use std::io::Cursor;
 use std::path::Path;
-use std::sync::{mpsc, OnceLock};
+use std::sync::mpsc;
 use std::thread;
+
+// ---------- хоткей-хелперы: максимально совместимо ----------
+fn hotkey_pressed(ctx: &Context, key: Key) -> bool {
+    // 1) Нормальный путь: шорткат (Cmd на mac / Ctrl на win/linux)
+    let via_shortcut = ctx.input_mut(|i| i.consume_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND, key)));
+    if via_shortcut {
+        return true;
+    }
+
+    // 2) Фолбэк: комбо (съедаем точную пару command+key, Shift допустим, Alt — нет)
+    let via_combo = ctx.input_mut(|i| i.consume_key(Modifiers::COMMAND, key));
+    if via_combo {
+        return true;
+    }
+
+    // 3) Сырой ивент (на случай экзотики на macOS)
+    ctx.input(|i| {
+        i.raw.events.iter().any(|e| {
+            matches!(
+                e,
+                Event::Key {
+                    key: k,
+                    pressed: true,
+                    repeat: false,
+                    modifiers,
+                    ..
+                } if *k == key && modifiers.command && !modifiers.alt
+            )
+        })
+    })
+}
 
 impl App {
     pub(crate) fn set_current_clipboard(&mut self) -> Result<(), String> {
-        // Берём пиксели из буфера обмена
+        // Читаем картинку из буфера обмена
         let mut cb = Clipboard::new().map_err(|e| format!("Clipboard init failed: {e}"))?;
         let img = cb
             .get_image()
@@ -31,15 +62,15 @@ impl App {
         let rgba_img = image::RgbaImage::from_raw(w, h, rgba).ok_or("Invalid clipboard image buffer")?;
         let dyn_img = DynamicImage::ImageRgba8(rgba_img);
 
-        // Кодируем в PNG в память (ImageBlp::from_bytes ест png/jpg/…)
+        // Кодируем во временный PNG (твой декодер ест png/jpg/…)
         let mut buf = Vec::new();
         dyn_img
             .write_to(&mut Cursor::new(&mut buf), ImageFormat::Png)
             .map_err(|e| format!("Encode PNG failed: {e}"))?;
 
-        // Сбрасываем состояние и шлём в фоновый декодер
+        // Сброс состояния + запуск декодера в фоне
         self.picked_file = None;
-        self.last_err = None;
+        self.err_clear();
         self.blp = None;
         self.selected_mip = 0;
         self.mip_textures.fill_with(|| None);
@@ -56,19 +87,19 @@ impl App {
         Ok(())
     }
 
-    pub(crate) fn file_picker_draw(&mut self, ctx: &egui::Context) {
-        // drag & drop
+    pub(crate) fn file_picker_draw(&mut self, ctx: &Context) {
+        // --- Drag & Drop файлов ---
         for f in ctx.input(|i| i.raw.dropped_files.clone()) {
             if let Some(path) = f.path {
                 self.set_current_file(Some(path));
             }
         }
 
-        // hotkeys → только флаги
-        let open_hotkey = ctx.input(|i| i.key_pressed(egui::Key::O) && i.modifiers.command);
-        let paste_hotkey = ctx.input(|i| i.key_pressed(egui::Key::V) && i.modifiers.command);
+        // Хоткеи (надёжно): сработают и когда в буфере ТОЛЬКО картинка
+        let open_hotkey = hotkey_pressed(ctx, Key::O);
+        let paste_hotkey = hotkey_pressed(ctx, Key::V);
 
-        // подпись заранее (не трогаем &self в UI-блоке)
+        // Подпись файла заранее
         let picked_opt = self.picked_file.clone();
         let (picked_str, has_file) = if let Some(p) = &picked_opt {
             (path_short(p, 72), true)
@@ -76,55 +107,66 @@ impl App {
             ("Drag a file here or use Select / Paste".to_string(), false)
         };
 
+        // --- Отступы строго из темы ---
         let style = ctx.style();
-        let spx_f = style.spacing.item_spacing.x;
-        let spx_i = spx_f as i8;
+        let spacing = &style.spacing; // egui::style::Spacing
+        let item_gap_f = spacing.item_spacing.x; // f32
+        let item_gap_i = item_gap_f as i8; // Margin требует i8
 
         let mut click_select = false;
         let mut click_paste = false;
 
-        egui::TopBottomPanel::top("file_picker_bar")
+        TopBottomPanel::top("file_picker_bar")
             .show_separator_line(false)
-            .frame(egui::Frame { fill: egui::Color32::from_rgba_unmultiplied(8, 32, 44, 192), stroke: style.visuals.widgets.inactive.bg_stroke, outer_margin: egui::Margin { top: spx_i, left: spx_i, right: spx_i, bottom: 0 }, inner_margin: egui::Margin::symmetric(spx_i, spx_i), ..Default::default() })
+            .frame(Frame {
+                fill: Color32::from_rgba_unmultiplied(8, 32, 44, 192), //
+                stroke: style.visuals.widgets.inactive.bg_stroke,
+                outer_margin: Margin::symmetric(item_gap_i, item_gap_i),
+                inner_margin: Margin::symmetric(item_gap_i, item_gap_i),
+                ..Default::default()
+            })
             .show(ctx, |ui| {
-                ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                     // --- Select ---
                     let select_resp = ui
                         .button("Select")
                         .on_hover_text("Open a file… (Cmd/Ctrl+O)")
-                        .on_hover_cursor(egui::CursorIcon::PointingHand);
+                        .on_hover_cursor(CursorIcon::PointingHand);
                     if select_resp.clicked() {
                         click_select = true;
                     }
 
-                    ui.add_space(8.0);
+                    ui.add_space(item_gap_f);
 
                     // --- Paste ---
                     let paste_resp = ui
                         .button("Paste")
                         .on_hover_text("Paste image from clipboard (Cmd/Ctrl+V)")
-                        .on_hover_cursor(egui::CursorIcon::PointingHand);
+                        .on_hover_cursor(CursorIcon::PointingHand);
                     if paste_resp.clicked() {
                         click_paste = true;
                     }
 
-                    ui.add_space(12.0);
+                    ui.add_space(item_gap_f * 1.5);
 
                     if has_file {
-                        ui.label(egui::RichText::new(picked_str.clone()).monospace());
+                        ui.label(RichText::new(picked_str.clone()).monospace());
                     } else {
-                        ui.label(egui::RichText::new(picked_str.clone()).italics());
+                        ui.label(RichText::new(picked_str.clone()).italics());
                     }
                 });
             });
 
-        // действия — после UI-блока (без конфликтов заимствований)
+        // --- Действия после UI ---
         if open_hotkey || click_select {
             self.file_dialog_open();
         }
-        if paste_hotkey || click_paste {
+
+        // Вставка: кнопка или хоткей. НЕ фильтруем через wants_keyboard_input —
+        // иначе шорткат часто "гасится" у TextEdit на macOS.
+        if click_paste || paste_hotkey {
             if let Err(e) = self.set_current_clipboard() {
-                self.last_err = Some(e);
+                self.err_set(e);
             }
         }
     }
@@ -134,13 +176,6 @@ impl App {
             .set_title("Select image")
             .add_filter("All images", all_image_exts());
 
-        // Доп. фильтры по вкусу (необязательно)
-        dlg = dlg
-            .add_filter("BLP", &["blp"])
-            .add_filter("PNG", &["png"])
-            .add_filter("JPEG", &["jpg", "jpeg"]);
-
-        // Стартовая директория: рядом с текущим файлом, иначе CWD
         if let Some(dir) = self
             .picked_file
             .as_ref()
@@ -163,33 +198,4 @@ fn path_short(p: &Path, max: usize) -> String {
     }
     let tail = max.saturating_sub(3);
     format!("…{}", &s[s.len().saturating_sub(tail)..])
-}
-
-/// Кэшируем один раз на процесс
-static ALL_IMAGE_EXTS: OnceLock<Vec<&'static str>> = OnceLock::new();
-
-fn all_image_exts() -> &'static [&'static str] {
-    ALL_IMAGE_EXTS
-        .get_or_init(|| {
-            let mut set: BTreeSet<&'static str> = BTreeSet::new();
-
-            // Все форматы, известные crate `image` (зависят от включённых фич)
-            for fmt in ImageFormat::all() {
-                for &ext in fmt.extensions_str() {
-                    set.insert(ext);
-                }
-            }
-
-            // Плюс наши кастомные
-            set.insert("blp");
-
-            // Если хочешь явно добавить редкие, которые у тебя точно поддержаны, раскомментируй:
-            // set.insert("dds");
-            // set.insert("tga");
-            // set.insert("qoi");
-            // set.insert("avif");
-
-            set.into_iter().collect::<Vec<_>>()
-        })
-        .as_slice()
 }
