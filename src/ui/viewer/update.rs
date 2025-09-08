@@ -22,7 +22,7 @@ impl eframe::App for App {
         paint_bg_neon_maze(ctx, self.bg_seed);
         self.draw_title_bar(ctx);
         self.draw_footer(ctx);
-        self.file_picker_draw(ctx);
+        self.draw_file_picker(ctx);
         if self.blp.is_some() || self.loading {
             self.draw_panel_left(ctx);
             self.draw_panel_right(ctx);

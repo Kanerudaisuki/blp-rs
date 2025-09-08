@@ -5,7 +5,7 @@ use egui::{self, Align, Color32, Context, CursorIcon, Frame, Key, Layout, Margin
 use std::path::Path;
 
 impl App {
-    pub(crate) fn file_picker_draw(&mut self, ctx: &Context) {
+    pub(crate) fn draw_file_picker(&mut self, ctx: &Context) {
         // --- Drag & Drop файлов ---
         for f in ctx.input(|i| i.raw.dropped_files.clone()) {
             if let Some(path) = f.path {

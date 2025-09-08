@@ -1,4 +1,4 @@
-pub mod file_picker_draw;
+pub mod draw_file_picker;
 mod all_image_exts;
 pub mod poll_decoder;
 pub mod macos_paste_event;
