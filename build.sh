@@ -69,11 +69,18 @@ mkdir -p "$APP_MACOS" "$APP_RES"
 cp "$MAC_UNI" "$APP_MACOS/$APP_NAME"
 chmod +x "$APP_MACOS/$APP_NAME"
 
-ICON_SRC="assets/icon.icns"
+# ---- иконка для .app ----
+# 1) сначала пробуем готовую icns, которую генерит твой build.rs
+ICON_SRC="assets/generated/AppIcon.icns"
+# 2) если её нет — fallback на ручную icns
+[[ -f "$ICON_SRC" ]] || ICON_SRC="assets/icon.icns"
+
 ICON_KEY=""
 if [[ -f "$ICON_SRC" ]]; then
-  cp "$ICON_SRC" "$APP_RES/icon.icns"
-  ICON_KEY="<key>CFBundleIconFile</key><string>icon</string>"
+  cp "$ICON_SRC" "$APP_RES/app.icns"
+  ICON_KEY="<key>CFBundleIconFile</key><string>app</string>"
+else
+  echo "⚠️  Не найдено icns: ни assets/generated/AppIcon.icns, ни assets/icon.icns — .app будет без иконки"
 fi
 
 cat > "$APP_TMP/Contents/Info.plist" <<PLIST
