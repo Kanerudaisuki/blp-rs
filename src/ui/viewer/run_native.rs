@@ -23,9 +23,9 @@ pub fn run_native(path: Option<PathBuf>) {
         Box::new(move |cc| -> Result<Box<dyn eframe::App>, _> {
             // Ваш обычный App
             let mut app = App::new(&cc.egui_ctx);
-            app.set_current_file(path);
+            app.pick_from_file(path);
             Ok(Box::new(app))
         }),
     )
-    .expect("failed to run eframe");
+    .expect("Failed to run eframe.");
 }
