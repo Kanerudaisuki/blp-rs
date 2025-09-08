@@ -1,6 +1,6 @@
 [package]
 name = "blp-rs"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["nazarpunk <nazarpunk@gmail.com>"]
 repository = "https://github.com/WarRaft/JASS-Tree-sitter-rust"
 edition = "2024"
