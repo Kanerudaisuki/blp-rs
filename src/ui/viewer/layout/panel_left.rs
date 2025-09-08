@@ -55,47 +55,49 @@ impl App {
 
                             let full_width = ui.available_width();
 
-                            // Save as BLP…
-                            if ui
-                                .add_sized([full_width, 0.0], egui::Button::new("Save as BLP"))
-                                .clicked()
-                            {
-                                // 1) сначала выбираем путь (требуется &mut self)
-                                let (def_blp, _) = self.default_names();
-                                if let Some(path) = self.pick_save_path(&def_blp, "blp", "BLP texture") {
-                                    // 2) теперь берём img (immut borrow живёт только внутри этого if)
-                                    let res = if let Some(img) = self.blp.as_ref() {
-                                        export_blp(img, &path, 100)
-                                    } else {
-                                        Err("No image loaded".into())
-                                    };
+                            ui.add_enabled_ui(!self.loading, |ui| {
+                                // Save as BLP…
+                                if ui
+                                    .add_sized([full_width, 0.0], egui::Button::new("Save as BLP"))
+                                    .clicked()
+                                {
+                                    // 1) сначала выбираем путь (требуется &mut self)
+                                    let (def_blp, _) = self.default_names();
+                                    if let Some(path) = self.pick_save_path(&def_blp, "blp", "BLP texture") {
+                                        // 2) теперь берём img (immut borrow живёт только внутри этого if)
+                                        let res = if let Some(img) = self.blp.as_ref() {
+                                            export_blp(img, &path, 100)
+                                        } else {
+                                            Err("No image loaded".into())
+                                        };
 
-                                    match res {
-                                        Ok(()) => self.err_clear(),
-                                        Err(e) => self.err_set(e),
+                                        match res {
+                                            Ok(()) => self.err_clear(),
+                                            Err(e) => self.err_set(e),
+                                        }
                                     }
                                 }
-                            }
 
-                            // Save as PNG…
-                            if ui
-                                .add_sized([full_width, 0.0], egui::Button::new("Save as PNG"))
-                                .clicked()
-                            {
-                                let (_, def_png) = self.default_names();
-                                if let Some(path) = self.pick_save_path(&def_png, "png", "PNG image") {
-                                    let res = if let Some(img) = self.blp.as_ref() {
-                                        export_png(img, &path)
-                                    } else {
-                                        Err("No image loaded".into())
-                                    };
+                                // Save as PNG…
+                                if ui
+                                    .add_sized([full_width, 0.0], egui::Button::new("Save as PNG"))
+                                    .clicked()
+                                {
+                                    let (_, def_png) = self.default_names();
+                                    if let Some(path) = self.pick_save_path(&def_png, "png", "PNG image") {
+                                        let res = if let Some(img) = self.blp.as_ref() {
+                                            export_png(img, &path)
+                                        } else {
+                                            Err("No image loaded".into())
+                                        };
 
-                                    match res {
-                                        Ok(()) => self.err_clear(),
-                                        Err(e) => self.err_set(e),
+                                        match res {
+                                            Ok(()) => self.err_clear(),
+                                            Err(e) => self.err_set(e),
+                                        }
                                     }
                                 }
-                            }
+                            });
                         });
 
                         let _ = ui.allocate_exact_size(egui::vec2(ui.available_width(), 0.0), Sense::hover());

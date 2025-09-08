@@ -7,18 +7,15 @@ impl App {
         CentralPanel::default()
             .frame(Frame::default())
             .show(ctx, |ui| {
+                if self.loading {
+                    return self.draw_spinner(ctx);
+                }
                 ScrollArea::vertical()
                     .id_salt("right_scroll_mips")
                     .show(ui, |ui| {
                         let spy = ui.spacing().item_spacing.y;
 
                         ui.add_space(spy * 2.0);
-
-                        if self.loading {
-                            ui.label("Decoding…");
-                            return;
-                        }
-
                         let pad_lr: i8 = ui.spacing().item_spacing.x.round() as i8;
                         for i in 0..MAX_MIPS {
                             if !self.mip_visible[i] {

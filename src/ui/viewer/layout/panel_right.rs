@@ -1,6 +1,6 @@
+use crate::image_blp::MAX_MIPS;
 use crate::ui::viewer::app::App;
 use egui::{self, Align2, Button, Frame, Margin, Response, ScrollArea, Sense, SidePanel, TextStyle, Ui};
-use crate::image_blp::MAX_MIPS;
 
 impl App {
     pub(crate) fn draw_panel_right(&mut self, ctx: &egui::Context) {
@@ -10,48 +10,48 @@ impl App {
             .show_separator_line(false)
             .frame(Frame { inner_margin: Margin::same(0), ..Default::default() })
             .show(ctx, |ui| {
-                let spx_f = ui.spacing().item_spacing.x;
+                let sp = ui.spacing();
+                let spx_f = sp.item_spacing.x;
+                let spy_f = sp.item_spacing.y;
                 let spx_i = spx_f.round() as i8;
 
                 ScrollArea::vertical()
                     .id_salt("left_scroll_mips")
                     .show(ui, |ui| {
-                        // горизонтальный внутренний отступ слева/справа
                         Frame { inner_margin: Margin { left: spx_i, right: spx_i, top: 0, bottom: 0 }, ..Default::default() }.show(ui, |ui| {
-                            ui.add_space(ui.spacing().item_spacing.y * 2.0);
+                            ui.add_space(spy_f * 2.0);
+                            ui.add_enabled_ui(!self.loading, |ui| {
+                                for i in 0..MAX_MIPS {
+                                    let (w, h) = self
+                                        .blp
+                                        .as_ref()
+                                        .and_then(|b| b.mipmaps.get(i))
+                                        .map(|m| (m.width, m.height))
+                                        .unwrap_or((0, 0));
 
-                            for i in 0..MAX_MIPS {
-                                // ЧИТАЕМ ТОЛЬКО ИЗ ImageBlp
-                                let (w, h) = self
-                                    .blp
-                                    .as_ref()
-                                    .and_then(|b| b.mipmaps.get(i))
-                                    .map(|m| (m.width, m.height))
-                                    .unwrap_or((0, 0));
-
-                                mipmap_button_row(ui, &mut self.mip_visible[i], i, w, h);
-                            }
-
-                            // Кнопки All / None, поровну по ширине
-                            let row_h = ui.spacing().interact_size.y;
-                            ui.columns(2, |cols| {
-                                if cols[0]
-                                    .add_sized([cols[0].available_width(), row_h], Button::new("All").wrap())
-                                    .clicked()
-                                {
-                                    self.mip_visible.fill(true);
+                                    mipmap_button_row(ui, &mut self.mip_visible[i], i, w, h);
                                 }
 
-                                if cols[1]
-                                    .add_sized([cols[1].available_width(), row_h], Button::new("None").wrap())
-                                    .clicked()
-                                {
-                                    self.mip_visible.fill(false);
-                                }
+                                // Кнопки All / None, поровну по ширине
+                                let row_h = ui.spacing().interact_size.y;
+                                ui.columns(2, |cols| {
+                                    if cols[0]
+                                        .add_sized([cols[0].available_width(), row_h], Button::new("All").wrap())
+                                        .clicked()
+                                    {
+                                        self.mip_visible.fill(true);
+                                    }
+
+                                    if cols[1]
+                                        .add_sized([cols[1].available_width(), row_h], Button::new("None").wrap())
+                                        .clicked()
+                                    {
+                                        self.mip_visible.fill(false);
+                                    }
+                                });
                             });
                         });
 
-                        
                         let _ = ui.allocate_exact_size(egui::vec2(ui.available_width(), 0.0), Sense::hover());
                     });
             });

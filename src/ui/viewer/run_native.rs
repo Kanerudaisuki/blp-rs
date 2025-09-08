@@ -1,12 +1,12 @@
 use crate::ui::viewer::app::App;
-use eframe::Renderer;
+use eframe::{NativeOptions, Renderer};
 use egui::ViewportBuilder;
 use std::path::PathBuf;
 
 pub fn run_native(path: Option<PathBuf>) {
     eframe::run_native(
         "blp-rs",
-        eframe::NativeOptions {
+        NativeOptions {
             persist_window: true,
             viewport: ViewportBuilder {
                 title: Some("blp-rs".to_string()), //
