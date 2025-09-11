@@ -5,6 +5,7 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::time::{SystemTime, UNIX_EPOCH};
+use eframe::egui::{Context, TextureHandle};
 
 pub struct App {
     pub bg_seed: u64,
@@ -14,14 +15,14 @@ pub struct App {
     pub err: Option<String>,
     pub blp: Option<ImageBlp>,
     pub selected_mip: usize,
-    pub mip_textures: Vec<Option<egui::TextureHandle>>, // len == 16
+    pub mip_textures: Vec<Option<TextureHandle>>, // len == 16
     pub decode_rx: Option<Receiver<DecodeResult>>,
     pub mip_visible: [bool; MAX_MIPS], // init: [true; 16]
     pub current_path: Option<PathBuf>, // откуда файл открыт (если есть)
 }
 
 impl App {
-    pub fn new(ctx: &egui::Context) -> Self {
+    pub fn new(ctx: &Context) -> Self {
         let nanos = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()

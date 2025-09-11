@@ -1,8 +1,8 @@
 use crate::ui::viewer::fonts::fonts::{FONT_BYTES, FontFace};
 use eframe::epaint::FontFamily;
 use eframe::epaint::text::{FontData, FontDefinitions};
-use egui::Context;
 use std::sync::Arc;
+use eframe::egui::Context;
 
 /// Регистрирует все шрифты и делает Regular дефолтным
 pub fn install_fonts(ctx: &Context) {

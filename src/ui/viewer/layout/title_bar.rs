@@ -1,5 +1,5 @@
 use crate::ui::viewer::app::App;
-use egui::{self, Align, Color32, Context, CursorIcon, FontId, Frame, Pos2, Response, Sense, Shape, Stroke, TopBottomPanel, Ui, Vec2, ViewportCommand};
+use eframe::egui::{self, Align, Color32, Context, CursorIcon, FontId, Frame, Pos2, Response, Sense, Shape, Stroke, TopBottomPanel, Ui, Vec2, ViewportCommand};
 
 impl App {
     pub(crate) fn draw_title_bar(&mut self, ctx: &Context) {

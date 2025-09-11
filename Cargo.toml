@@ -15,7 +15,6 @@ walkdir = "2.5.0"
 clap = { version = "4.5.47", features = ["derive"] }
 rfd = "0.15.4"
 arboard = "3.6.1"
-egui = "0.32.2"
 mozjpeg = "0.10.13"
 eframe = { version = "0.32.2", features = ["wgpu", "persistence"] }
 serde = { version = "1.0.219", features = ["derive"] }

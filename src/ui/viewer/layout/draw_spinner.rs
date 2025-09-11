@@ -1,5 +1,5 @@
-use egui::text::{LayoutJob, TextFormat};
-use egui::{Align2, Area, Color32, Context, FontId, Order, vec2, Spinner};
+use eframe::egui::text::{LayoutJob, TextFormat};
+use eframe::egui::{Align2, Area, Color32, Context, FontId, Order, vec2, Spinner};
 
 use crate::ui::viewer::app::App;
 

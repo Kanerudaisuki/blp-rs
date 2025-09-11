@@ -1,11 +1,11 @@
 use crate::decode::decode_result::DecodeResult;
 use crate::image_blp::MAX_MIPS;
 use crate::ui::viewer::app::App;
-use egui::ColorImage;
+use eframe::egui::{ColorImage, Context, TextureOptions, vec2};
 use std::sync::mpsc::TryRecvError;
 
 impl App {
-    pub(crate) fn poll_decoder(&mut self, ctx: &egui::Context) {
+    pub(crate) fn poll_decoder(&mut self, ctx: &Context) {
         if !self.loading {
             return;
         }
@@ -24,8 +24,8 @@ impl App {
                         if let Some(img) = &m.image {
                             let (w, h) = (m.width as usize, m.height as usize);
                             let mut ci = ColorImage::from_rgba_unmultiplied([w, h], img.as_raw());
-                            ci.source_size = egui::vec2(w as f32, h as f32);
-                            self.mip_textures[i] = Some(ctx.load_texture(format!("mip_{i}"), ci, egui::TextureOptions::LINEAR));
+                            ci.source_size = vec2(w as f32, h as f32);
+                            self.mip_textures[i] = Some(ctx.load_texture(format!("mip_{i}"), ci, TextureOptions::LINEAR));
                         } else {
                             self.mip_textures[i] = None;
                         }

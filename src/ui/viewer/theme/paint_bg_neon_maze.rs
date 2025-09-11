@@ -1,4 +1,4 @@
-use egui::{epaint::Shape, *};
+use eframe::egui::{epaint::Shape, *};
 
 pub fn paint_bg_neon_maze(ctx: &Context, seed: u64) {
     let painter = ctx.layer_painter(LayerId::background());

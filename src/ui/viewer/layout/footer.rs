@@ -1,8 +1,8 @@
 use crate::ui::viewer::app::App;
-use egui::{Align, Color32, CornerRadius, Frame, Label, Layout, Margin, RichText, ScrollArea, Stroke, TopBottomPanel};
+use eframe::egui::{Align, Color32, Context, CornerRadius, CursorIcon, Frame, Label, Layout, Margin, RichText, ScrollArea, Stroke, TopBottomPanel};
 
 impl App {
-    pub(crate) fn draw_footer(&mut self, ctx: &egui::Context) {
+    pub(crate) fn draw_footer(&mut self, ctx: &Context) {
         if let Some(err) = self.err.clone().as_ref() {
             TopBottomPanel::bottom("footer_error")
                 .resizable(true)
@@ -24,10 +24,20 @@ impl App {
                         );
 
                         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                            if ui.button("Clear").clicked() {
+                            if ui
+                                .button("Close")
+                                .on_hover_text("Close error message")
+                                .on_hover_cursor(CursorIcon::PointingHand)
+                                .clicked()
+                            {
                                 self.err_clear();
                             }
-                            if ui.button("Copy").clicked() {
+                            if ui
+                                .button("Copy")
+                                .on_hover_text("Copy error message to clipboard")
+                                .on_hover_cursor(CursorIcon::PointingHand)
+                                .clicked()
+                            {
                                 ui.ctx()
                                     .copy_text(format!("```\n{}\n```", err));
                             }

@@ -1,21 +1,20 @@
 use crate::ui::viewer::app::App;
 use crate::ui::viewer::file_picker::all_image_exts::all_image_exts;
 use crate::ui::viewer::file_picker::hotkey_pressed::hotkey_pressed;
-use egui::{self, Color32, CornerRadius, Galley, StrokeKind, TextStyle};
+use eframe::egui::text::{LayoutJob, TextWrapping};
+use eframe::egui::{Align, Button, Color32, Context, CornerRadius, CursorIcon, Frame, Galley, Key, Layout, Margin, Sense, Stroke, StrokeKind, TextEdit, TextFormat, TextStyle, TopBottomPanel, pos2, vec2};
 use std::path::Path;
-use std::sync::Arc;
 
 impl App {
-    pub(crate) fn draw_file_picker(&mut self, ctx: &egui::Context) {
-        // DnD
+    pub(crate) fn draw_file_picker(&mut self, ctx: &Context) {
         for f in ctx.input(|i| i.raw.dropped_files.clone()) {
             if let Some(path) = f.path {
                 self.pick_from_file(Some(path));
             }
         }
 
-        let open_hotkey = hotkey_pressed(ctx, egui::Key::O);
-        let paste_hotkey = hotkey_pressed(ctx, egui::Key::V);
+        let open_hotkey = hotkey_pressed(ctx, Key::O);
+        let paste_hotkey = hotkey_pressed(ctx, Key::V);
 
         let style = ctx.style();
         let spacing = &style.spacing;
@@ -25,31 +24,35 @@ impl App {
         let mut click_select = false;
         let mut click_paste = false;
 
-        egui::TopBottomPanel::top("file_picker_bar")
+        TopBottomPanel::top("file_picker_bar")
             .show_separator_line(false)
-            .frame(egui::Frame {
+            .frame(Frame {
                 fill: Color32::TRANSPARENT, //
-                stroke: egui::Stroke::NONE,
-                outer_margin: egui::Margin { left: gap_i, right: gap_i, top: gap_i, bottom: 0 },
-                inner_margin: egui::Margin::same(0),
+                stroke: Stroke::NONE,
+                outer_margin: Margin { left: gap_i, right: gap_i, top: gap_i, bottom: 0 },
+                inner_margin: Margin::same(2),
                 ..Default::default()
             })
             .show(ctx, |ui| {
-                ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
                     ui.add_enabled_ui(!self.loading, |ui| {
+                        // Open
                         if ui
-                            .button("Open")
+                            .add(Button::new("Open"))
                             .on_hover_text("Open a file (Cmd/Ctrl+O)")
-                            .on_hover_cursor(egui::CursorIcon::PointingHand)
+                            .on_hover_cursor(CursorIcon::PointingHand)
                             .clicked()
                         {
                             click_select = true;
                         }
+
                         ui.add_space(gap);
+
+                        // Paste
                         if ui
-                            .button("Paste")
+                            .add(Button::new("Paste"))
                             .on_hover_text("Paste image from clipboard (Cmd/Ctrl+V)")
-                            .on_hover_cursor(egui::CursorIcon::PointingHand)
+                            .on_hover_cursor(CursorIcon::PointingHand)
                             .clicked()
                         {
                             click_paste = true;
@@ -63,32 +66,57 @@ impl App {
 
                     if let Some(path) = self.picked_file.clone() {
                         let mut s = path_abs(&path);
-                        let te = egui::TextEdit::singleline(&mut s)
+                        let te = TextEdit::singleline(&mut s)
                             .font(TextStyle::Monospace)
                             .cursor_at_end(true)
-                            .desired_width(w); // тянем на всю оставшуюся ширину
+                            .desired_width(w);
                         let resp = ui.add_sized([w, row_h], te);
                         resp.on_hover_text(&s);
                     } else {
+                        use std::sync::Arc;
+
                         let s = if self.blp.is_some() { "Pasted image (clipboard)" } else { "Drag a file here or use Open / Paste" };
+
                         let style = ui.style().clone();
                         let spacing = style.spacing.clone();
                         let pad = spacing.button_padding;
-                        let font_id = TextStyle::Button.resolve(&style);
 
-                        let galley: Arc<Galley> = ui.fonts(|f| f.layout_no_wrap(s.to_owned(), font_id.clone(), style.visuals.text_color()));
+                        // --- КУРСИВНЫЙ GALLEY ---
+                        let galley: Arc<Galley> = ui.fonts(|fonts| {
+                            let mut job = LayoutJob::single_section(
+                                s.to_owned(),
+                                TextFormat {
+                                    font_id: TextStyle::Button.resolve(&style),
+                                    color: style.visuals.text_color(), // базовый цвет, прозрачность ниже
+                                    italics: true,                     // << вот это включает курсив
+                                    ..Default::default()
+                                },
+                            );
+                            job.wrap = TextWrapping::default(); // без переноса (аналог layout_no_wrap)
+                            fonts.layout_job(job)
+                        });
 
-                        let size = egui::vec2(galley.size().x + pad.x * 2.0, galley.size().y + pad.y * 2.0);
-                        let (rect, _) = ui.allocate_exact_size(size, egui::Sense::click());
+                        let w = ui.available_width();
+                        let size = vec2(w, galley.size().y + pad.y * 2.0);
+                        let (rect, _) = ui.allocate_exact_size(size, Sense::click());
 
-                        let stroke = style.visuals.widgets.inactive.bg_stroke;
-                        let fill = Color32::from_rgba_unmultiplied(8, 32, 44, 192);
+                        ui.painter().rect(
+                            rect,
+                            CornerRadius::same(0), //
+                            Color32::from_rgba_unmultiplied(8, 32, 44, 192),
+                            style.visuals.widgets.inactive.bg_stroke,
+                            StrokeKind::Inside,
+                        );
+
+                        let text_pos = pos2(rect.min.x + pad.x, rect.min.y + pad.y);
+
+                        // чуть приглушим текст
+                        let color = style
+                            .visuals
+                            .text_color()
+                            .linear_multiply(0.85);
                         ui.painter()
-                            .rect(rect, CornerRadius::same(0), fill, stroke, StrokeKind::Inside);
-
-                        let text_pos = egui::pos2(rect.min.x + pad.x, rect.min.y + pad.y);
-                        ui.painter()
-                            .galley(text_pos, galley, style.visuals.text_color());
+                            .galley(text_pos, galley, color);
                     }
                 });
             });
@@ -124,7 +152,6 @@ impl App {
     }
 }
 
-// Абсолютный путь (копируемый)
 fn path_abs(p: &Path) -> String {
     let abs = if p.is_absolute() {
         p.to_path_buf()

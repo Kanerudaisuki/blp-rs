@@ -1,4 +1,4 @@
-use egui::{Context, Event, Key, KeyboardShortcut, Modifiers};
+use eframe::egui::{Context, Event, Key, KeyboardShortcut, Modifiers};
 
 pub(super) fn hotkey_pressed(ctx: &Context, key: Key) -> bool {
     // 1) Нормальный путь: шорткат (Cmd на mac / Ctrl на win/linux)

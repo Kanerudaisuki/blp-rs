@@ -2,7 +2,7 @@ use crate::export::export_blp::export_blp;
 use crate::export::export_png::export_png;
 use crate::export::last_dir::{load_last_dir, save_last_dir};
 use crate::ui::viewer::app::App;
-use egui::{self, Frame, Margin, ScrollArea, Sense, SidePanel};
+use eframe::egui::{vec2, Button, Context, CursorIcon, Frame, Margin, ScrollArea, Sense, SidePanel};
 use std::path::PathBuf;
 
 impl App {
@@ -21,7 +21,6 @@ impl App {
             .set_file_name(default_name)
             .add_filter(desc, &[ext]);
 
-        // приоритет: сохранённая папка → папка текущего файла → дефолт ОС
         if let Some(dir) = load_last_dir().or_else(|| {
             self.current_path
                 .as_ref()
@@ -37,7 +36,7 @@ impl App {
         Some(path)
     }
 
-    pub(crate) fn draw_panel_left(&mut self, ctx: &egui::Context) {
+    pub(crate) fn draw_panel_left(&mut self, ctx: &Context) {
         SidePanel::left("left_mips")
             .resizable(false)
             .exact_width(180.0)
@@ -55,16 +54,15 @@ impl App {
 
                             let full_width = ui.available_width();
 
+                            // Save as BLP…
                             ui.add_enabled_ui(!self.loading, |ui| {
-                                // Save as BLP…
                                 if ui
-                                    .add_sized([full_width, 0.0], egui::Button::new("Save as BLP"))
+                                    .add_sized([ui.available_width(), 0.0], Button::new("Save as BLP"))
+                                    .on_hover_cursor(CursorIcon::PointingHand)
                                     .clicked()
                                 {
-                                    // 1) сначала выбираем путь (требуется &mut self)
                                     let (def_blp, _) = self.default_names();
                                     if let Some(path) = self.pick_save_path(&def_blp, "blp", "BLP texture") {
-                                        // 2) теперь берём img (immut borrow живёт только внутри этого if)
                                         let res = if let Some(img) = self.blp.as_ref() {
                                             export_blp(img, &path, 100)
                                         } else {
@@ -80,7 +78,8 @@ impl App {
 
                                 // Save as PNG…
                                 if ui
-                                    .add_sized([full_width, 0.0], egui::Button::new("Save as PNG"))
+                                    .add_sized([full_width, 0.0], Button::new("Save as PNG"))
+                                    .on_hover_cursor(CursorIcon::PointingHand)
                                     .clicked()
                                 {
                                     let (_, def_png) = self.default_names();
@@ -100,7 +99,7 @@ impl App {
                             });
                         });
 
-                        let _ = ui.allocate_exact_size(egui::vec2(ui.available_width(), 0.0), Sense::hover());
+                        let _ = ui.allocate_exact_size(vec2(ui.available_width(), 0.0), Sense::hover());
                     });
             });
     }

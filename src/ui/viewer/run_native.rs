@@ -1,6 +1,6 @@
 use crate::ui::viewer::app::App;
 use eframe::{NativeOptions, Renderer};
-use egui::ViewportBuilder;
+use eframe::egui::{vec2, ViewportBuilder};
 use std::path::PathBuf;
 
 pub fn run_native(path: Option<PathBuf>) {
@@ -11,7 +11,7 @@ pub fn run_native(path: Option<PathBuf>) {
             viewport: ViewportBuilder {
                 title: Some("blp-rs".to_string()), //
                 app_id: Some("org.warraft.blp-rs".to_string()),
-                inner_size: Some(egui::vec2(800.0, 680.0)),
+                inner_size: Some(vec2(800.0, 680.0)),
                 clamp_size_to_monitor_size: Some(true),
                 decorations: Some(false),
                 resizable: Some(true),

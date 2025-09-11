@@ -1,6 +1,6 @@
 use crate::image_blp::MAX_MIPS;
 use crate::ui::viewer::app::App;
-use egui::{self, Align, CentralPanel, Frame, Image, Label, Layout, Margin, RichText, ScrollArea, Sense, Ui, vec2};
+use eframe::egui::{self, Align, CentralPanel, Frame, Image, Label, Layout, Margin, RichText, ScrollArea, Sense, Ui, vec2};
 
 impl App {
     pub(crate) fn draw_panel_center(&mut self, ctx: &egui::Context) {

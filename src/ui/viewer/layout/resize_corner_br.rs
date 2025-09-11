@@ -1,5 +1,5 @@
-use egui::viewport::{ResizeDirection, ViewportCommand};
-use egui::{Color32, Context, CursorIcon, Id, Order, Rect, Sense, Stroke, pos2, vec2};
+use eframe::egui::viewport::{ResizeDirection, ViewportCommand};
+use eframe::egui::{Color32, Context, CursorIcon, Id, Order, Rect, Sense, Stroke, pos2, vec2, Area};
 
 /// Нижний-правый уголок, который запускает нативный ресайз по ЛКМ.
 #[allow(dead_code)]
@@ -8,7 +8,7 @@ pub fn resize_corner_br(ctx: &Context) {
     let screen = ctx.screen_rect();
     let corner = Rect::from_min_max(pos2(screen.right() - grip, screen.bottom() - grip), screen.right_bottom());
 
-    egui::Area::new(Id::new("__br_resize_handle__"))
+    Area::new(Id::new("__br_resize_handle__"))
         .order(Order::Foreground)
         .fixed_pos(corner.min)
         .show(ctx, |ui| {
