@@ -1,6 +1,6 @@
 #[cfg(debug_assertions)]
 use eframe::egui::style::DebugOptions;
-use eframe::egui::style::{HandleShape, Interaction, NumberFormatter, NumericColorSpace, ScrollAnimation, ScrollStyle, Selection, Style, WidgetVisuals, Widgets};
+use eframe::egui::style::{HandleShape, Interaction, NumberFormatter, NumericColorSpace, ScrollAnimation, ScrollStyle, Selection, Style, TextCursorStyle, WidgetVisuals, Widgets};
 use eframe::egui::{Color32, Context, CornerRadius, CursorIcon, FontId, Margin, Shadow, Spacing, Stroke, TextStyle, TextWrapMode, Visuals, vec2};
 use eframe::emath::Rangef;
 use eframe::epaint::AlphaFromCoverage;
@@ -38,7 +38,7 @@ pub fn apply_style(ctx: &Context) {
     let window_stroke = Color32::from_rgb(70, 120, 140);
 
     // Выделение/линки/статусы
-    let selection_bg = Color32::from_rgba_premultiplied(0, 230, 255, 108);
+    let selection_bg = Color32::from_rgba_premultiplied(0, 100, 130, 100);
     let selection_stroke = cyan_hi;
     let hyperlink_color = cyan;
     let warn_fg_color = Color32::from_rgb(255, 210, 0);
@@ -60,7 +60,13 @@ pub fn apply_style(ctx: &Context) {
         override_text_valign: None,
 
         // 1) Таблица стилей шрифтов
-        text_styles: BTreeMap::from([(TextStyle::Small, FontId::proportional(11.0)), (TextStyle::Body, FontId::proportional(14.0)), (TextStyle::Button, FontId::proportional(14.0)), (TextStyle::Heading, FontId::proportional(18.0)), (TextStyle::Monospace, FontId::monospace(13.0))]),
+        text_styles: BTreeMap::from([
+            (TextStyle::Small, FontId::proportional(11.0)), //
+            (TextStyle::Body, FontId::proportional(14.0)),
+            (TextStyle::Button, FontId::proportional(14.0)),
+            (TextStyle::Heading, FontId::proportional(18.0)),
+            (TextStyle::Monospace, FontId::monospace(13.0)),
+        ]),
         drag_value_text_style: TextStyle::Monospace,
 
         // 2) Формат чисел
@@ -98,7 +104,16 @@ pub fn apply_style(ctx: &Context) {
         },
 
         // 5) Интеракция
-        interaction: Interaction { interact_radius: 4.0, resize_grab_radius_side: 6.0, resize_grab_radius_corner: 12.0, show_tooltips_only_when_still: true, tooltip_delay: 0.18, tooltip_grace_time: 0.08, selectable_labels: true, multi_widget_text_select: true },
+        interaction: Interaction {
+            interact_radius: 4.0, //
+            resize_grab_radius_side: 6.0,
+            resize_grab_radius_corner: 12.0,
+            show_tooltips_only_when_still: true,
+            tooltip_delay: 0.18,
+            tooltip_grace_time: 0.08,
+            selectable_labels: true,
+            multi_widget_text_select: true,
+        },
 
         // 6) Визуалы/цвета/состояния
         visuals: Visuals {
@@ -110,7 +125,14 @@ pub fn apply_style(ctx: &Context) {
             weak_text_color: None,
 
             widgets: Widgets {
-                noninteractive: WidgetVisuals { bg_fill: bg_panel, weak_bg_fill: bg_weak, bg_stroke: Stroke::new(1.0, stroke_lo), fg_stroke: Stroke::new(1.0, fg_main), corner_radius: CornerRadius::same(2u8), expansion: 0.0 },
+                noninteractive: WidgetVisuals {
+                    bg_fill: bg_panel, //
+                    weak_bg_fill: bg_weak,
+                    bg_stroke: Stroke::new(1.0, stroke_lo),
+                    fg_stroke: Stroke::new(1.0, fg_main),
+                    corner_radius: CornerRadius::same(2u8),
+                    expansion: 0.0,
+                },
                 inactive: WidgetVisuals {
                     bg_fill: bg_inactive,
                     weak_bg_fill: bg_inactive_weak,
@@ -145,7 +167,10 @@ pub fn apply_style(ctx: &Context) {
                 },
             },
 
-            selection: Selection { bg_fill: selection_bg, stroke: Stroke::new(1.0, selection_stroke) },
+            selection: Selection {
+                bg_fill: selection_bg, //
+                stroke: Stroke::new(1.0, selection_stroke),
+            },
 
             hyperlink_color,
             faint_bg_color: bg_faint,
@@ -156,18 +181,34 @@ pub fn apply_style(ctx: &Context) {
             error_fg_color,
 
             window_corner_radius: CornerRadius::same(6u8),
-            window_shadow: Shadow { offset: [10, 10], blur: 15, spread: 0, color: window_shadow_col },
+            window_shadow: Shadow {
+                offset: [10, 10], //
+                blur: 15,
+                spread: 0,
+                color: window_shadow_col,
+            },
             window_fill: bg_window,
             window_stroke: Stroke::new(1.0, window_stroke),
             window_highlight_topmost: true,
 
             menu_corner_radius: CornerRadius::same(4u8),
             panel_fill: bg_panel,
-            popup_shadow: Shadow { offset: [6, 6], blur: 8, spread: 0, color: popup_shadow_col },
+            popup_shadow: Shadow {
+                offset: [6, 6], //
+                blur: 8,
+                spread: 0,
+                color: popup_shadow_col,
+            },
 
             resize_corner_size: 12.0,
 
-            text_cursor: eframe::egui::style::TextCursorStyle { stroke: Stroke::new(2.0, text_cursor_col), preview: false, blink: true, on_duration: 0.6, off_duration: 0.4 },
+            text_cursor: TextCursorStyle {
+                stroke: Stroke::new(2.0, text_cursor_col), //
+                preview: false,
+                blink: true,
+                on_duration: 0.6,
+                off_duration: 0.4,
+            },
 
             clip_rect_margin: 3.0,
             button_frame: true, // оставил как у тебя

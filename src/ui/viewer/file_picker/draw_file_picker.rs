@@ -1,9 +1,10 @@
 use crate::ui::viewer::app::App;
 use crate::ui::viewer::file_picker::all_image_exts::all_image_exts;
 use crate::ui::viewer::file_picker::hotkey_pressed::hotkey_pressed;
+use crate::ui::viewer::file_picker::safe_path::abs_string_with_macros;
+use crate::ui::widget::text_edit_ex::TextEditLikeButtonChain;
 use eframe::egui::text::{LayoutJob, TextWrapping};
 use eframe::egui::{Align, Button, Color32, Context, CornerRadius, CursorIcon, Frame, Galley, Key, Layout, Margin, Sense, Stroke, StrokeKind, TextEdit, TextFormat, TextStyle, TopBottomPanel, pos2, vec2};
-use std::path::Path;
 
 impl App {
     pub(crate) fn draw_file_picker(&mut self, ctx: &Context) {
@@ -65,13 +66,15 @@ impl App {
                     let w = ui.available_width();
 
                     if let Some(path) = self.picked_file.clone() {
-                        let mut s = path_abs(&path);
-                        let te = TextEdit::singleline(&mut s)
-                            .font(TextStyle::Monospace)
-                            .cursor_at_end(true)
-                            .desired_width(w);
-                        let resp = ui.add_sized([w, row_h], te);
-                        resp.on_hover_text(&s);
+                        let mut s = abs_string_with_macros(&path);
+                        ui.add_sized(
+                            [w, row_h],
+                            TextEdit::singleline(&mut s)
+                                .font(TextStyle::Monospace)
+                                .cursor_at_end(true)
+                                .desired_width(w)
+                                .like_button(),
+                        );
                     } else {
                         use std::sync::Arc;
 
@@ -86,7 +89,6 @@ impl App {
                             let mut job = LayoutJob::single_section(
                                 s.to_owned(),
                                 TextFormat {
-                                    font_id: TextStyle::Button.resolve(&style),
                                     color: style.visuals.text_color(), // базовый цвет, прозрачность ниже
                                     italics: true,                     // << вот это включает курсив
                                     ..Default::default()
@@ -150,15 +152,4 @@ impl App {
             self.pick_from_file(Some(path));
         }
     }
-}
-
-fn path_abs(p: &Path) -> String {
-    let abs = if p.is_absolute() {
-        p.to_path_buf()
-    } else if let Ok(cwd) = std::env::current_dir() {
-        cwd.join(p)
-    } else {
-        p.to_path_buf()
-    };
-    abs.to_string_lossy().into_owned()
 }

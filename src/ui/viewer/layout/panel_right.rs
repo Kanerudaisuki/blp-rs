@@ -1,6 +1,6 @@
 use crate::image_blp::MAX_MIPS;
 use crate::ui::viewer::app::App;
-use eframe::egui::{Button, Context, Frame, Margin, Response, RichText, ScrollArea, Sense, SidePanel, TextStyle, Ui, vec2};
+use eframe::egui::{Button, Context, CursorIcon, Frame, Margin, Response, RichText, ScrollArea, Sense, SidePanel, TextStyle, Ui, vec2};
 
 impl App {
     pub(crate) fn draw_panel_right(&mut self, ctx: &Context) {
@@ -36,14 +36,16 @@ impl App {
                                 let row_h = ui.spacing().interact_size.y;
                                 ui.columns(2, |cols| {
                                     if cols[0]
-                                        .add_sized([cols[0].available_width(), row_h], Button::new("All").wrap())
+                                        .add_sized([cols[0].available_width(), row_h], Button::new("All"))
+                                        .on_hover_cursor(CursorIcon::PointingHand)
                                         .clicked()
                                     {
                                         self.mip_visible.fill(true);
                                     }
 
                                     if cols[1]
-                                        .add_sized([cols[1].available_width(), row_h], Button::new("None").wrap())
+                                        .add_sized([cols[1].available_width(), row_h], Button::new("None"))
+                                        .on_hover_cursor(CursorIcon::PointingHand)
                                         .clicked()
                                     {
                                         self.mip_visible.fill(false);
@@ -62,19 +64,36 @@ pub fn mipmap_button_row(ui: &mut Ui, on: &mut bool, i: usize, w: u32, h: u32) -
     let row_h = ui.spacing().interact_size.y;
     let width = ui.available_width();
 
-    let label = RichText::new(format!("#{i:02}    {w}×{h}")).text_style(TextStyle::Monospace);
+    // Фиксированная ширина поля для w — чтобы "x" стоял на одном X у всех строк.
+    const W_WIDTH: usize = 5; // под размеры до 99999; поменяй при необходимости
 
-    let mut btn = Button::new(label)
-        .min_size(vec2(width, row_h))
-        .wrap();
+    // Текст: "#NN", пробел, w (леводополнённый), затем "x" и h.
+    let text = format!("#{i:02} {w:>W_WIDTH$}x{h}", W_WIDTH = W_WIDTH);
 
-    //if *on {btn = btn.fill(ui.visuals().selection.bg_fill);}
+    // Цвет текста: для off — disabled, для on — обычный.
+    let v = &ui.style().visuals;
+    let col = if *on {
+        v.widgets.active.fg_stroke.color
+    } else {
+        // ослабляем до disabled
+        v.widgets
+            .inactive
+            .fg_stroke
+            .color
+            .linear_multiply(v.disabled_alpha)
+    };
 
-    let resp = ui.add(btn);
+    let label = RichText::new(text)
+        .text_style(TextStyle::Monospace)
+        .color(col);
+
+    // Обычная кнопка, без fill — никаких фонов
+    let resp = ui
+        .add(Button::new(label).min_size(vec2(width, row_h)))
+        .on_hover_cursor(CursorIcon::PointingHand);
 
     if resp.clicked() {
         *on = !*on;
     }
-
     resp
 }

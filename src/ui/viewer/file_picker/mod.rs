@@ -5,3 +5,4 @@ pub mod macos_paste_event;
 mod hotkey_pressed;
 mod pick_from_file;
 mod pick_from_clipboard;
+mod safe_path;
