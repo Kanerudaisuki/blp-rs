@@ -19,23 +19,23 @@ impl App {
                 .show(ctx, |ui| {
                     ui.horizontal(|ui| {
                         ui.label(
-                            RichText::new("⚠ Error")
+                            RichText::new(format!("⚠ {}", self.tr("error")))
                                 .strong()
                                 .color(Color32::from_rgb(255, 120, 120)),
                         );
 
                         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                             if ui
-                                .button("Close")
-                                .on_hover_text("Close error message")
+                                .button(self.tr("close"))
+                                .on_hover_text(self.tr("close-error-hint"))
                                 .on_hover_cursor(CursorIcon::PointingHand)
                                 .clicked()
                             {
                                 self.err_clear();
                             }
                             if ui
-                                .button("Copy")
-                                .on_hover_text("Copy error message to clipboard")
+                                .button(self.tr("copy"))
+                                .on_hover_text(self.tr("copy-error-hint"))
                                 .on_hover_cursor(CursorIcon::PointingHand)
                                 .clicked()
                             {
@@ -48,7 +48,7 @@ impl App {
                     ui.add_space(6.0);
 
                     ScrollArea::both()
-                        .auto_shrink([false, false])
+                        .auto_shrink([true, true])
                         .show(ui, |ui| {
                             ui.add(
                                 Label::new(RichText::new(err).monospace())

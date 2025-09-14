@@ -12,3 +12,13 @@ filter-all-images = All images
 
 save-as-blp = Save as BLP
 save-as-png = Save as PNG
+
+error = Error
+
+close = Close
+close-error-hint = Close error message
+
+copy = Copy
+copy-error-hint = Copy error message to clipboard
+
+no-image = No image

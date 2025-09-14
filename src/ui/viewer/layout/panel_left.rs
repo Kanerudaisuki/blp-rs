@@ -1,10 +1,8 @@
 use crate::export::export_blp::export_blp;
 use crate::export::export_png::export_png;
 use crate::export::last_dir::{load_last_dir, save_last_dir};
-use crate::ui::i18n::lng_list::LngList;
-use crate::ui::i18n::prefs::save_lang;
 use crate::ui::viewer::app::App;
-use eframe::egui::{Button, ComboBox, Context, CursorIcon, Frame, Margin, ScrollArea, Sense, SidePanel, TopBottomPanel, vec2};
+use eframe::egui::{vec2, Button, Context, CursorIcon, Frame, Margin, ScrollArea, Sense, SidePanel};
 use std::path::PathBuf;
 
 impl App {
