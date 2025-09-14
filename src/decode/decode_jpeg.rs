@@ -1,14 +1,14 @@
+use crate::err::app_err::AppErr;
 use crate::header::Header;
 use crate::image_blp::{ImageBlp, MAX_MIPS};
 use crate::mipmap::Mipmap;
 use byteorder::{LittleEndian, ReadBytesExt};
 use image::{Rgba, RgbaImage};
 use jpeg_decoder::{Decoder, PixelFormat};
-use std::error::Error;
 use std::io::{Cursor, Read};
 
 impl ImageBlp {
-    pub(crate) fn decode_jpeg(cursor: &mut Cursor<&[u8]>, header: &Header, slices: Vec<Option<&[u8]>>, mipmaps: &mut Vec<Mipmap>) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub(crate) fn decode_jpeg(cursor: &mut Cursor<&[u8]>, header: &Header, slices: Vec<Option<&[u8]>>, mipmaps: &mut Vec<Mipmap>) -> Result<(), AppErr> {
         let jpeg_header_size = cursor.read_u32::<LittleEndian>()? as usize;
         let mut jpeg_header_chunk = vec![0u8; jpeg_header_size];
         cursor.read_exact(&mut jpeg_header_chunk)?;
@@ -42,7 +42,7 @@ impl ImageBlp {
 }
 
 impl Mipmap {
-    pub fn decode_jpeg_inner(header: &Header, jpeg_header_chunk: &[u8], jpeg_chunk: &[u8]) -> Result<Mipmap, Box<dyn Error + Send + Sync>> {
+    pub fn decode_jpeg_inner(header: &Header, jpeg_header_chunk: &[u8], jpeg_chunk: &[u8]) -> Result<Mipmap, AppErr> {
         let mut full = Vec::with_capacity(jpeg_header_chunk.len() + jpeg_chunk.len());
         full.extend_from_slice(jpeg_header_chunk);
         full.extend_from_slice(jpeg_chunk);
@@ -51,7 +51,8 @@ impl Mipmap {
         dec.read_info()?;
         let info = dec
             .info()
-            .ok_or("No JPEG metadata after read_info")?;
+            .ok_or_else(|| AppErr::new("jpeg-metadata-missing").with_arg("msg", "No JPEG metadata after read_info"))?;
+
         let (w, h) = (info.width as u32, info.height as u32);
 
         let pixels = dec.decode()?;
@@ -64,7 +65,7 @@ impl Mipmap {
             // → RGB = 255 - (Y,M,C), A = (alpha_bits==0)?255:(255-K)
             PixelFormat::CMYK32 => {
                 if pixels.len() != (w * h * 4) as usize {
-                    return Err("JPEG buffer size mismatch for CMYK32".into());
+                    return Err(AppErr::new("jpeg-metadata-missing").with_arg("msg", "JPEG buffer size mismatch for CMYK32"));
                 }
                 for (i, px) in img.pixels_mut().enumerate() {
                     let idx = i * 4;
@@ -85,7 +86,7 @@ impl Mipmap {
             // 3 компонента — на всякий случай: просто RGB, альфы в JPEG нет
             PixelFormat::RGB24 => {
                 if pixels.len() != (w * h * 3) as usize {
-                    return Err("JPEG buffer size mismatch for RGB24".into());
+                    return Err(AppErr::new("jpeg-metadata-missing").with_arg("msg", "JPEG buffer size mismatch for RGB24"));
                 }
                 for (i, px) in img.pixels_mut().enumerate() {
                     let idx = i * 3;
@@ -99,14 +100,31 @@ impl Mipmap {
             // серый и пр. — сведём к L8
             PixelFormat::L8 => {
                 if pixels.len() != (w * h) as usize {
-                    return Err("JPEG buffer size mismatch for L8".into());
+                    return Err(AppErr::new("jpeg-metadata-missing").with_arg("msg", "JPEG buffer size mismatch for L8"));
                 }
                 for (i, px) in img.pixels_mut().enumerate() {
                     let l = pixels[i];
                     *px = Rgba([l, l, l, 255]);
                 }
             }
-            PixelFormat::L16 => todo!(),
+            PixelFormat::L16 => {
+                // Ожидаем по 2 байта на пиксель
+                if pixels.len() != (w * h * 2) as usize {
+                    return Err(AppErr::new("jpeg-metadata-missing").with_arg("msg", "Buffer size mismatch for L16"));
+                }
+
+                // PNG/TIFF обычно хранят L16 в big-endian (MSB, затем LSB).
+                // Если твой источник little-endian, замени from_be_bytes на from_le_bytes.
+                for (chunk, px) in pixels
+                    .chunks_exact(2)
+                    .zip(img.pixels_mut())
+                {
+                    let l16 = u16::from_be_bytes([chunk[0], chunk[1]]);
+                    // Равномерная свёртка 16-бит в 8-бит: 0..65535 -> 0..255
+                    let l8 = (l16 / 257) as u8;
+                    *px = Rgba([l8, l8, l8, 255]);
+                }
+            }
         }
 
         Ok(Mipmap { width: w, height: h, image: Some(img) })

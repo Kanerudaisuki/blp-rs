@@ -5,7 +5,13 @@ use eframe::egui::{Align, Color32, ComboBox, Context, CursorIcon, Frame, Label, 
 
 impl App {
     pub(crate) fn draw_footer(&mut self, ctx: &Context) {
-        if let Some(err) = self.err.clone().as_ref() {
+        if self.error.is_some() {
+            let plain = self
+                .error
+                .to_owned()
+                .unwrap()
+                .to_string();
+
             TopBottomPanel::bottom("footer_error")
                 .resizable(true)
                 .show_separator_line(false)
@@ -31,7 +37,7 @@ impl App {
                                 .on_hover_cursor(CursorIcon::PointingHand)
                                 .clicked()
                             {
-                                self.err_clear();
+                                self.error = None;
                             }
                             if ui
                                 .button(self.tr("copy"))
@@ -40,7 +46,7 @@ impl App {
                                 .clicked()
                             {
                                 ui.ctx()
-                                    .copy_text(format!("```\n{}\n```", err));
+                                    .copy_text(format!("```\n{}\n```", plain));
                             }
                         });
                     });
@@ -48,10 +54,10 @@ impl App {
                     ui.add_space(6.0);
 
                     ScrollArea::both()
-                        .auto_shrink([true, true])
+                        .auto_shrink([false, true])
                         .show(ui, |ui| {
                             ui.add(
-                                Label::new(RichText::new(err).monospace())
+                                Label::new(RichText::new(plain).monospace())
                                     .wrap()
                                     .selectable(true),
                             );

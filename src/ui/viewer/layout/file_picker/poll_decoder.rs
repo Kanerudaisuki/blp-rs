@@ -1,4 +1,3 @@
-use crate::decode::decode_result::DecodeResult;
 use crate::image_blp::MAX_MIPS;
 use crate::ui::viewer::app::App;
 use eframe::egui::{ColorImage, Context, TextureOptions, vec2};
@@ -13,8 +12,9 @@ impl App {
 
         if let Some(rx) = &self.decode_rx {
             match rx.try_recv() {
-                Ok(DecodeResult::Blp(blp)) => {
-                    // Заливка текстур только для существующих уровней с картинкой
+                // === успех ===
+                Ok(Ok(blp)) => {
+                    // Заливка текстур только для существующих уровней
                     for (i, m) in blp
                         .mipmaps
                         .iter()
@@ -38,16 +38,21 @@ impl App {
                     self.blp = Some(blp);
                     self.decode_rx = None;
                     self.loading = false;
-                    //self.last_err = None;
                 }
-                Ok(DecodeResult::Err(e)) => {
-                    self.err_set(e);
+
+                // === ошибка из воркера (ErrWire) ===
+                Ok(Err(wire)) => {
+                    //self.errors.push(ErrItem::from_wire(wire));
                     self.decode_rx = None;
                     self.loading = false;
                 }
+
+                // канал пуст — ждём дальше
                 Err(TryRecvError::Empty) => {}
+
+                // воркер умер — запишем явную ошибку
                 Err(TryRecvError::Disconnected) => {
-                    self.err_set("Decoder thread disconnected.");
+                    //self.errors.push(ErrItem::new(ErrKind::Unknown { msg: "decoder thread disconnected".to_string() }, file!(), line!()));
                     self.decode_rx = None;
                     self.loading = false;
                 }

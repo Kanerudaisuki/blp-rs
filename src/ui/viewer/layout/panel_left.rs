@@ -1,8 +1,9 @@
+use crate::err::app_err::AppErr;
 use crate::export::export_blp::export_blp;
 use crate::export::export_png::export_png;
 use crate::export::last_dir::{load_last_dir, save_last_dir};
 use crate::ui::viewer::app::App;
-use eframe::egui::{vec2, Button, Context, CursorIcon, Frame, Margin, ScrollArea, Sense, SidePanel};
+use eframe::egui::{Button, Context, CursorIcon, Frame, Margin, ScrollArea, Sense, SidePanel, vec2};
 use std::path::PathBuf;
 
 impl App {
@@ -66,12 +67,12 @@ impl App {
                                         let res = if let Some(img) = self.blp.as_ref() {
                                             export_blp(img, &path, 100)
                                         } else {
-                                            Err("No image loaded".into())
+                                            Err(AppErr::new("no-image").with_arg("msg", "No image loaded"))
                                         };
 
-                                        match res {
-                                            Ok(()) => self.err_clear(),
-                                            Err(e) => self.err_set(e),
+                                        self.error = match res {
+                                            Ok(()) => None,
+                                            Err(e) => Some(e),
                                         }
                                     }
                                 }
@@ -87,12 +88,12 @@ impl App {
                                         let res = if let Some(img) = self.blp.as_ref() {
                                             export_png(img, &path)
                                         } else {
-                                            Err("No image loaded".into())
+                                            Err(AppErr::new("no-image").with_arg("msg", "No image loaded"))
                                         };
 
-                                        match res {
-                                            Ok(()) => self.err_clear(),
-                                            Err(e) => self.err_set(e),
+                                        self.error = match res {
+                                            Ok(()) => None,
+                                            Err(e) => Some(e),
                                         }
                                     }
                                 }

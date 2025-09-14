@@ -1,31 +1,40 @@
-use crate::header::Header;
-use crate::image_blp::{ImageBlp, MAX_MIPS};
+use crate::image_blp::{Header, ImageBlp, MAX_MIPS};
 use crate::mipmap::Mipmap;
 use crate::util::center_crop_to_pow2::center_crop_to_pow2;
-use image::imageops::{FilterType, resize};
-use std::error::Error;
+use image::{
+    self,
+    imageops::{FilterType, resize},
+};
+use crate::err::app_err::AppErr;
 
 impl ImageBlp {
-    pub(crate) fn from_buf_image(buf: &[u8]) -> Result<Self, Box<dyn Error + Send + Sync>> {
-        // 1) Декодим в RGBA8
-        let img = image::load_from_memory(buf)
-            .map_err(|e| format!("raster decode failed: {e}"))?
-            .to_rgba8();
+    pub(crate) fn from_buf_image(buf: &[u8]) -> Result<Self, AppErr> {
+        let guessed: Option<String> = image::guess_format(buf)
+            .ok()
+            .map(|f| format!("{:?}", f));
 
-        let (w, h) = img.dimensions();
-        if w == 0 || h == 0 {
-            return Err("raster image has zero width or height".into());
+        let size = buf.len();
+
+        let img = match image::load_from_memory(buf) {
+            Ok(i) => i.to_rgba8(),
+            Err(e) => {
+                //return Err(err_wire_cause!(ErrKind::DecodeImage { guessed: guessed.clone(), size }, &e));
+                return Err(AppErr::new("test"));
+            }
+        };
+
+        let (w0, h0) = img.dimensions();
+        if w0 == 0 || h0 == 0 {
+            //return Err(err_wire!(ErrKind::DecodeImage { guessed: guessed.clone(), size }));
+            return Err(AppErr::new("test"));
         }
 
-        // 2) Центр-кроп под степени двойки
-        let base = center_crop_to_pow2(&img); // <-- твоя функция
+        let base = center_crop_to_pow2(&img);
         let (mut w, mut h) = base.dimensions();
-        let (base_w, base_h) = (w, h); // Сохраняем размеры уровня 0
+        let (base_w, base_h) = (w, h);
 
-        // 3) Строим мип-цепочку до 1×1 (не останавливаемся, когда одна сторона == 1)
         let mut chain = Vec::with_capacity(16);
         chain.push(base.clone());
-
         while (w > 1 || h > 1) && chain.len() < MAX_MIPS {
             let nw = (w / 2).max(1);
             let nh = (h / 2).max(1);
@@ -35,7 +44,6 @@ impl ImageBlp {
             h = nh;
         }
 
-        // 4) Упаковываем в Vec<Mipmap>
         let mut mipmaps: Vec<Mipmap> = chain
             .into_iter()
             .map(|im| {
@@ -48,10 +56,9 @@ impl ImageBlp {
             mipmaps.truncate(MAX_MIPS);
         }
         while mipmaps.len() < MAX_MIPS {
-            mipmaps.push(Mipmap::default()); // заполняем пустыми
+            mipmaps.push(Mipmap::default());
         }
 
-        // 5) В header пишем именно размеры нулевого уровня
         Ok(ImageBlp { header: Header { width: base_w, height: base_h, ..Default::default() }, mipmaps, holes: 0 })
     }
 }

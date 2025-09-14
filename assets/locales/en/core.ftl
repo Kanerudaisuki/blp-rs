@@ -22,3 +22,6 @@ copy = Copy
 copy-error-hint = Copy error message to clipboard
 
 no-image = No image
+
+error-open_path = Failed to open file: { $path }
+

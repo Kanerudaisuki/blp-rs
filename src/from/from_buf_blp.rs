@@ -1,13 +1,13 @@
-use crate::header::{HEADER_SIZE, Header};
+use crate::err::app_err::AppErr;
+use crate::header::{Header, HEADER_SIZE};
 use crate::image_blp::{ImageBlp, MAX_MIPS};
 use crate::mipmap::Mipmap;
 use crate::texture_type::TextureType;
 use byteorder::{LittleEndian, ReadBytesExt};
-use std::error::Error;
 use std::io::Cursor;
 
 impl ImageBlp {
-    pub(crate) fn from_buf_blp(buf: &[u8]) -> Result<Self, Box<dyn Error + Send + Sync>> {
+    pub(crate) fn from_buf_blp(buf: &[u8]) -> Result<Self, AppErr> {
         // 1) Парсим заголовок
         let mut cursor = Cursor::new(buf);
         let header = Header::parse(&mut cursor)?;
@@ -65,7 +65,8 @@ impl ImageBlp {
                 // Для JPEG после заголовка идут: u32 (размер JPEG-заголовка) + сам JPEG header
                 let base = HEADER_SIZE as usize;
                 if buf.len() < base + 4 {
-                    return Err("Truncated buffer while reading JPEG header size".into());
+                    return Err(AppErr::new("test"));
+                    //return Err("Truncated buffer while reading JPEG header size".into());
                 }
                 // Читаем размер JPEG-заголовка, не сдвигая основной курсор
                 let mut c = Cursor::new(&buf[base..]);

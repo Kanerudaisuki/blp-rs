@@ -13,7 +13,8 @@ impl eframe::App for App {
             tick_ensure_cmdv_event();
             if take_cmdv_event() {
                 if let Err(e) = self.pick_from_clipboard() {
-                    self.err_set(e);
+                    //TODO: show error
+                    //self.err_set(e);
                 }
             }
         }

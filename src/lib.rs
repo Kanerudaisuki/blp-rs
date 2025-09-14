@@ -11,4 +11,5 @@ mod cli;
 mod encode;
 mod export;
 mod from;
+mod err;
 

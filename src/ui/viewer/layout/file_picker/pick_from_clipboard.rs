@@ -48,7 +48,7 @@ impl App {
 
         // Сброс состояния + запуск декодера
         self.picked_file = None;
-        self.err_clear();
+        self.error = None;
         self.blp = None;
         self.selected_mip = 0;
         self.mip_textures.fill_with(|| None);

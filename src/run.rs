@@ -1,8 +1,8 @@
 use crate::cli::command::to_blp::to_blp;
 use crate::cli::command::to_png::to_png;
+use crate::err::app_err::AppErr;
 use crate::ui::viewer::run_native::run_native;
 use clap::{Parser, Subcommand, error::ErrorKind};
-use std::error::Error;
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -43,7 +43,7 @@ enum Command {
     },
 }
 
-pub fn run() -> Result<(), Box<dyn Error + Send + Sync>> {
+pub fn run() -> Result<(), AppErr> {
     match Cli::try_parse() {
         Ok(cli) => {
             if let Some(cmd) = cli.command {

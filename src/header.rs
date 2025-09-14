@@ -1,8 +1,8 @@
+use crate::err::app_err::AppErr;
 use crate::image_blp::MAX_MIPS;
 use crate::texture_type::TextureType;
 use crate::version::Version;
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
-use std::error::Error;
 use std::io::Cursor;
 
 pub const HEADER_SIZE: u64 = 156;
@@ -24,12 +24,20 @@ pub struct Header {
 }
 
 impl Header {
-    pub fn parse(cursor: &mut Cursor<&[u8]>) -> Result<Self, Box<dyn Error + Send + Sync>> {
+    pub fn parse(cursor: &mut Cursor<&[u8]>) -> Result<Self, AppErr> {
         let version_raw = cursor.read_u32::<BigEndian>()?;
-        let version = Version::try_from(version_raw).map_err(|_| "Invalid BLP version")?;
+        let version = Version::try_from(version_raw).map_err(|e| {
+            AppErr::new("blp.version.invalid")
+                .with_arg("got", version_raw) // полезно передать, что пришло
+                .with_arg("msg", e.to_string()) // текст первичной ошибки (если есть)
+        })?;
 
         let texture_type_raw = cursor.read_u32::<LittleEndian>()?;
-        let texture_type = TextureType::try_from(texture_type_raw).map_err(|_| "Invalid BLP version")?;
+        let texture_type = TextureType::try_from(texture_type_raw).map_err(|e| {
+            AppErr::new("blp.version.invalid")
+                .with_arg("got", version_raw) // полезно передать, что пришло
+                .with_arg("msg", e.to_string()) // текст первичной ошибки (если есть)
+        })?;
 
         let (compression, alpha_bits, alpha_type, has_mips) = if version >= Version::BLP2 {
             (

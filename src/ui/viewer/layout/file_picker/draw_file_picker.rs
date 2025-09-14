@@ -129,7 +129,8 @@ impl App {
         }
         if click_paste || paste_hotkey {
             if let Err(e) = self.pick_from_clipboard() {
-                self.err_set(e);
+                //TODO
+                //self.err_set(e);
             }
         }
     }
