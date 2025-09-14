@@ -1,7 +1,9 @@
+use crate::flargs;
+use crate::ui::i18n::shortcut::platform_cmd_shortcut;
 use crate::ui::viewer::app::App;
-use crate::ui::viewer::file_picker::all_image_exts::all_image_exts;
-use crate::ui::viewer::file_picker::hotkey_pressed::hotkey_pressed;
-use crate::ui::viewer::file_picker::safe_path::abs_string_with_macros;
+use crate::ui::viewer::layout::file_picker::all_image_exts::all_image_exts;
+use crate::ui::viewer::layout::file_picker::hotkey_pressed::hotkey_pressed;
+use crate::ui::viewer::layout::file_picker::safe_path::abs_string_with_macros;
 use crate::ui::widget::text_edit_ex::TextEditLikeButtonChain;
 use eframe::egui::text::{LayoutJob, TextWrapping};
 use eframe::egui::{Align, Button, Color32, Context, CornerRadius, CursorIcon, Frame, Galley, Key, Layout, Margin, Sense, Stroke, StrokeKind, TextEdit, TextFormat, TextStyle, TopBottomPanel, pos2, vec2};
@@ -39,8 +41,8 @@ impl App {
                     ui.add_enabled_ui(!self.loading, |ui| {
                         // Open
                         if ui
-                            .add(Button::new("Open"))
-                            .on_hover_text("Open a file (Cmd/Ctrl+O)")
+                            .add(Button::new(self.tr("open")))
+                            .on_hover_text(self.tr_args("open-hint", &flargs!(shortcut = platform_cmd_shortcut("O"))))
                             .on_hover_cursor(CursorIcon::PointingHand)
                             .clicked()
                         {
@@ -51,8 +53,8 @@ impl App {
 
                         // Paste
                         if ui
-                            .add(Button::new("Paste"))
-                            .on_hover_text("Paste image from clipboard (Cmd/Ctrl+V)")
+                            .add(Button::new(self.tr("paste")))
+                            .on_hover_text(self.tr_args("paste-hint", &flargs!(shortcut = platform_cmd_shortcut("V"))))
                             .on_hover_cursor(CursorIcon::PointingHand)
                             .clicked()
                         {
@@ -77,9 +79,7 @@ impl App {
                         );
                     } else {
                         use std::sync::Arc;
-
-                        let s = if self.blp.is_some() { "Pasted image (clipboard)" } else { "Drag a file here or use Open / Paste" };
-
+                        let s = self.tr(if self.blp.is_some() { "pasted-image" } else { "drop-hint" });
                         let style = ui.style().clone();
                         let spacing = style.spacing.clone();
                         let pad = spacing.button_padding;
@@ -136,8 +136,8 @@ impl App {
 
     fn file_dialog_open(&mut self) {
         let mut dlg = rfd::FileDialog::new()
-            .set_title("Select image")
-            .add_filter("All images", all_image_exts());
+            .set_title(self.tr("select-image"))
+            .add_filter(self.tr("filter-all-images"), all_image_exts());
 
         if let Some(dir) = self
             .picked_file

@@ -1,13 +1,16 @@
 use crate::decode::decode_result::DecodeResult;
 use crate::image_blp::{ImageBlp, MAX_MIPS};
+use crate::ui::i18n::lng_list::LngList;
+use crate::ui::i18n::prefs::load_prefs;
 use crate::ui::viewer::fonts::install_fonts::install_fonts;
+use eframe::egui::{Context, TextureHandle};
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::time::{SystemTime, UNIX_EPOCH};
-use eframe::egui::{Context, TextureHandle};
 
 pub struct App {
+    pub lng: LngList,
     pub bg_seed: u64,
     pub maximized: bool,
     pub picked_file: Option<PathBuf>,
@@ -29,6 +32,7 @@ impl App {
             .as_nanos();
 
         let app = Self {
+            lng: load_prefs().lang,
             maximized: false, //
             bg_seed: (nanos as u64) ^ ((nanos >> 64) as u64),
             picked_file: None,

@@ -1,8 +1,10 @@
 use crate::export::export_blp::export_blp;
 use crate::export::export_png::export_png;
 use crate::export::last_dir::{load_last_dir, save_last_dir};
+use crate::ui::i18n::lng_list::LngList;
+use crate::ui::i18n::prefs::save_lang;
 use crate::ui::viewer::app::App;
-use eframe::egui::{vec2, Button, Context, CursorIcon, Frame, Margin, ScrollArea, Sense, SidePanel};
+use eframe::egui::{Button, ComboBox, Context, CursorIcon, Frame, Margin, ScrollArea, Sense, SidePanel, TopBottomPanel, vec2};
 use std::path::PathBuf;
 
 impl App {
@@ -37,9 +39,9 @@ impl App {
     }
 
     pub(crate) fn draw_panel_left(&mut self, ctx: &Context) {
-        SidePanel::left("left_mips")
+        SidePanel::left("left_panel")
             .resizable(false)
-            .exact_width(180.0)
+            .exact_width(190.0)
             .show_separator_line(false)
             .frame(Frame { inner_margin: Margin::same(0), ..Default::default() })
             .show(ctx, |ui| {
@@ -47,7 +49,7 @@ impl App {
                 let spx_i = spx_f.round() as i8;
 
                 ScrollArea::vertical()
-                    .id_salt("left_scroll_mips")
+                    .id_salt("left_panel_scroll")
                     .show(ui, |ui| {
                         Frame { inner_margin: Margin { left: spx_i, right: spx_i, top: 0, bottom: 0 }, ..Default::default() }.show(ui, |ui| {
                             ui.add_space(ui.spacing().item_spacing.y * 2.0);
@@ -57,7 +59,7 @@ impl App {
                             // Save as BLP…
                             ui.add_enabled_ui(!self.loading, |ui| {
                                 if ui
-                                    .add_sized([ui.available_width(), 0.0], Button::new("Save as BLP"))
+                                    .add_sized([ui.available_width(), 0.0], Button::new(self.tr("save-as-blp")))
                                     .on_hover_cursor(CursorIcon::PointingHand)
                                     .clicked()
                                 {
@@ -78,7 +80,7 @@ impl App {
 
                                 // Save as PNG…
                                 if ui
-                                    .add_sized([full_width, 0.0], Button::new("Save as PNG"))
+                                    .add_sized([full_width, 0.0], Button::new(self.tr("save-as-png")))
                                     .on_hover_cursor(CursorIcon::PointingHand)
                                     .clicked()
                                 {

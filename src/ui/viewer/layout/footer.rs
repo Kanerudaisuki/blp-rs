@@ -1,5 +1,7 @@
+use crate::ui::i18n::lng_list::LngList;
+use crate::ui::i18n::prefs::save_lang;
 use crate::ui::viewer::app::App;
-use eframe::egui::{Align, Color32, Context, CornerRadius, CursorIcon, Frame, Label, Layout, Margin, RichText, ScrollArea, Stroke, TopBottomPanel};
+use eframe::egui::{Align, Color32, ComboBox, Context, CursorIcon, Frame, Label, Layout, Margin, RichText, ScrollArea, Stroke, TopBottomPanel};
 
 impl App {
     pub(crate) fn draw_footer(&mut self, ctx: &Context) {
@@ -8,11 +10,10 @@ impl App {
                 .resizable(true)
                 .show_separator_line(false)
                 .frame(Frame {
-                    fill: Color32::from_rgba_unmultiplied(18, 8, 12, 230),
+                    fill: Color32::from_rgba_unmultiplied(18, 8, 12, 230), //
                     stroke: Stroke::new(1.0, Color32::from_rgb(255, 70, 70)),
-                    inner_margin: Margin::symmetric(8, 8), // см. твои предпочтения по Margin
-                    outer_margin: Margin::symmetric(0, 0),
-                    corner_radius: CornerRadius::same(8u8), // и по CornerRadius
+                    inner_margin: Margin::symmetric(8, 8),
+                    outer_margin: Margin { left: 0, right: 0, top: 8, bottom: 0 },
                     ..Default::default()
                 })
                 .show(ctx, |ui| {
@@ -57,5 +58,39 @@ impl App {
                         });
                 });
         }
+
+        TopBottomPanel::bottom("footer_menu")
+            .resizable(false)
+            .show_separator_line(false)
+            .frame(Frame {
+                inner_margin: Margin::symmetric(8, 8), //
+                // Вариант A — мягкий teal
+                fill: Color32::from_rgba_unmultiplied(16, 24, 26, 190),
+                stroke: Stroke::new(1.0, Color32::from_rgba_unmultiplied(28, 120, 120, 150)),
+
+                ..Default::default()
+            })
+            .show(ctx, |ui| {
+                let ir = ComboBox::from_id_salt("menu_lng")
+                    .selected_text(self.lng.name())
+                    .show_ui(ui, |ui| {
+                        for cand in [LngList::Uk, LngList::Ru, LngList::En] {
+                            let sel = self.lng == cand;
+                            if ui
+                                .selectable_label(sel, cand.name())
+                                .on_hover_cursor(CursorIcon::PointingHand) // курсор в выпаде
+                                .clicked()
+                                && !sel
+                            {
+                                self.lng = cand;
+                                let _ = save_lang(self.lng);
+                            }
+                        }
+                    });
+
+                // курсор над свернутым комбобоксом
+                ir.response
+                    .on_hover_cursor(CursorIcon::PointingHand);
+            });
     }
 }

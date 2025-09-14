@@ -9,7 +9,7 @@ impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         #[cfg(target_os = "macos")]
         {
-            use crate::ui::viewer::file_picker::macos_paste_event::{take_cmdv_event, tick_ensure_cmdv_event};
+            use crate::ui::viewer::layout::file_picker::macos_paste_event::{take_cmdv_event, tick_ensure_cmdv_event};
             tick_ensure_cmdv_event();
             if take_cmdv_event() {
                 if let Err(e) = self.pick_from_clipboard() {

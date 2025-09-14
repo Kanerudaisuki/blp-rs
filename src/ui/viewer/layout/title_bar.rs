@@ -1,5 +1,5 @@
 use crate::ui::viewer::app::App;
-use eframe::egui::{self, Align, Color32, Context, CursorIcon, FontId, Frame, Pos2, Response, Sense, Shape, Stroke, TopBottomPanel, Ui, Vec2, ViewportCommand};
+use eframe::egui::{Align, Color32, Context, CursorIcon, FontId, Frame, Layout, Pos2, Response, Sense, Shape, Stroke, TopBottomPanel, Ui, Vec2, ViewportCommand};
 
 impl App {
     pub(crate) fn draw_title_bar(&mut self, ctx: &Context) {
@@ -60,7 +60,7 @@ impl App {
 
                 // --- СПРАВА: red → green → yellow ---
                 let (close_resp, zoom_resp, min_resp) = ui
-                    .with_layout(egui::Layout::right_to_left(Align::Center), |ui| {
+                    .with_layout(Layout::right_to_left(Align::Center), |ui| {
                         ui.add_space(6.0);
                         let close_resp = macos_dot(ui, TrafficKind::Close).on_hover_cursor(CursorIcon::PointingHand);
                         ui.add_space(6.0);

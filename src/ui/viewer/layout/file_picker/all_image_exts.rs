@@ -4,7 +4,7 @@ use std::sync::OnceLock;
 
 static ALL_IMAGE_EXTS: OnceLock<Vec<&'static str>> = OnceLock::new();
 
-pub(super) fn all_image_exts() -> &'static [&'static str] {
+pub(in crate::ui::viewer) fn all_image_exts() -> &'static [&'static str] {
     ALL_IMAGE_EXTS
         .get_or_init(|| {
             let mut set: BTreeSet<&'static str> = BTreeSet::new();

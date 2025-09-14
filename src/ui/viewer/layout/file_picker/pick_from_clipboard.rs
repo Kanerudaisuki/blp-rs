@@ -6,7 +6,7 @@ impl App {
         // ---------- macOS: file:// из Finder ----------
         #[cfg(target_os = "macos")]
         {
-            use crate::ui::viewer::file_picker::macos_paste_event::pasteboard_file_path;
+            use crate::ui::viewer::layout::file_picker::macos_paste_event::pasteboard_file_path;
 
             if let Some(path) = pasteboard_file_path().filter(|p| p.is_file()) {
                 self.pick_from_file(Some(path));

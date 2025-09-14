@@ -1,6 +1,6 @@
 use eframe::egui::{Context, Event, Key, KeyboardShortcut, Modifiers};
 
-pub(super) fn hotkey_pressed(ctx: &Context, key: Key) -> bool {
+pub(in crate::ui::viewer) fn hotkey_pressed(ctx: &Context, key: Key) -> bool {
     // 1) Нормальный путь: шорткат (Cmd на mac / Ctrl на win/linux)
     let via_shortcut = ctx.input_mut(|i| i.consume_shortcut(&KeyboardShortcut::new(Modifiers::COMMAND, key)));
     if via_shortcut {
