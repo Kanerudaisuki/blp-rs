@@ -1,3 +1,5 @@
+use crate::ext::path::to_abs_string_with_macros::PathMacrosExt;
+use crate::ui::viewer::app::App;
 use crate::ui::viewer::layout::file_saver::last_safe_dir::{last_save_dir_load, last_save_dir_save};
 use std::path::PathBuf;
 
@@ -42,7 +44,7 @@ fn ensure_path_has_ext(mut p: PathBuf, ext: &str) -> PathBuf {
     p
 }
 
-impl crate::ui::viewer::app::App {
+impl App {
     /// Предпросмотр конечного пути (для тултипа/иконки).
     pub(crate) fn preview_save_path(&self, default_name: &str, ext: &str) -> SavePreview {
         let name = ensure_ext(default_name, ext);
@@ -70,12 +72,12 @@ impl crate::ui::viewer::app::App {
     pub(crate) fn save_preview_tooltip(&self, preview: &SavePreview) -> String {
         match preview {
             SavePreview::Direct(p) => {
-                format!("{}\n{}", self.tr("save-tooltip-direct"), p.display())
+                format!("{}\n{}", self.tr("save-tooltip-direct"), p.to_abs_string_with_macros())
             }
             SavePreview::Dialog { start_dir, name } => {
                 let dir = start_dir
                     .as_ref()
-                    .map(|d| d.display().to_string())
+                    .map(|d| d.to_abs_string_with_macros())
                     .unwrap_or_else(|| {
                         self.tr("save-tooltip-dialog-dir-unknown")
                             .to_owned()
