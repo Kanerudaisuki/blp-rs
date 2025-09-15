@@ -1,4 +1,4 @@
-use crate::err::app_err::AppErr;
+use crate::err::blp_err::BlpErr;
 use crate::export::export_blp::export_blp;
 use crate::export::export_png::export_png;
 use crate::export::last_dir::{load_last_dir, save_last_dir};
@@ -67,7 +67,7 @@ impl App {
                                         let res = if let Some(img) = self.blp.as_ref() {
                                             export_blp(img, &path, 100)
                                         } else {
-                                            Err(AppErr::new("no-image").with_arg("msg", "No image loaded"))
+                                            Err(BlpErr::new("no-image").with_arg("msg", "No image loaded"))
                                         };
 
                                         self.error = match res {
@@ -88,7 +88,7 @@ impl App {
                                         let res = if let Some(img) = self.blp.as_ref() {
                                             export_png(img, &path)
                                         } else {
-                                            Err(AppErr::new("no-image").with_arg("msg", "No image loaded"))
+                                            Err(BlpErr::new("no-image").with_arg("msg", "No image loaded"))
                                         };
 
                                         self.error = match res {

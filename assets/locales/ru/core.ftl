@@ -23,4 +23,21 @@ copy-error-hint = Скопировать сообщение об ошибке в
 
 no-image = Нет изображения
 
-error-open_path = Не удалось открыть файл: { $path }
+error-poll-decoder = Внутренняя ошибка декодера.
+
+error-file-not-found = Файл не найден: { $path }
+error-permission-denied = Нет прав доступа: { $path }
+error-path-is-directory = Указан каталог: { $path }
+error-path-not-regular-file = Указан не обычный файл: { $path }
+error-invalid-path = Некорректный путь: { $path } ({ $msg })
+error-io-metadata = Не удалось получить метаданные: { $path } ({ $msg })
+error-io-open-file = Не удалось открыть файл: { $path } ({ $msg })
+
+error-image-load = Не удалось декодировать изображение.
+error-image-empty = Некорректный размер изображения (ширина={ $width }, высота={ $height })
+
+error-clipboard-init-failed = Не удалось получить доступ к буферу обмена.
+error-clipboard-no-image = В буфере обмена нет изображения.
+error-clipboard-invalid-buffer = Некорректный буфер изображения (ширина={ $width }, высота={ $height }).
+error-clipboard-encode-png-failed = Не удалось закодировать PNG из изображения буфера обмена.
+

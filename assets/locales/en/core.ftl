@@ -23,5 +23,21 @@ copy-error-hint = Copy error message to clipboard
 
 no-image = No image
 
-error-open_path = Failed to open file: { $path }
+error-poll-decoder = Internal decoder error.
+
+error-file-not-found = File not found: { $path }
+error-permission-denied = Permission denied: { $path }
+error-path-is-directory = Path is a directory: { $path }
+error-path-not-regular-file = Path is not a regular file: { $path }
+error-invalid-path = Invalid path: { $path } ({ $msg })
+error-io-metadata = Failed to read file metadata: { $path } ({ $msg })
+error-io-open-file = Failed to open file: { $path } ({ $msg })
+
+error-image-load = Failed to decode image.
+error-image-empty = Image has invalid size (width={ $width }, height={ $height })
+
+error-clipboard-init-failed = Failed to access clipboard.
+error-clipboard-no-image = No image found in clipboard.
+error-clipboard-invalid-buffer = Invalid clipboard image buffer (width={ $width }, height={ $height }).
+error-clipboard-encode-png-failed = Failed to encode PNG from clipboard image.
 

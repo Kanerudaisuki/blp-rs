@@ -1,4 +1,4 @@
-use crate::err::app_err::AppErr;
+use crate::err::blp_err::BlpErr;
 use crate::image_blp::{ImageBlp, MAX_MIPS};
 use crate::ui::i18n::lng_list::LngList;
 use crate::ui::i18n::prefs::load_prefs;
@@ -14,11 +14,11 @@ pub struct App {
     pub maximized: bool,
     pub picked_file: Option<PathBuf>,
     pub loading: bool,
-    pub error: Option<AppErr>, // один корень ошибки
+    pub error: Option<BlpErr>, // один корень ошибки
     pub blp: Option<ImageBlp>,
     pub selected_mip: usize,
     pub mip_textures: Vec<Option<TextureHandle>>, // len == 16
-    pub decode_rx: Option<Receiver<Result<ImageBlp, AppErr>>>,
+    pub decode_rx: Option<Receiver<Result<ImageBlp, BlpErr>>>,
     pub mip_visible: [bool; MAX_MIPS], // init: [true; 16]
     pub current_path: Option<PathBuf>, // откуда файл открыт (если есть)
 }

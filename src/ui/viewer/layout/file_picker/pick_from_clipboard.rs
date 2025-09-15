@@ -1,15 +1,16 @@
-use crate::decode::decode_input::{DecodeInput, decode_input};
+use crate::decode::input::DecodeInput;
+use crate::err::blp_err::BlpErr;
 use crate::ui::viewer::app::App;
 
 impl App {
-    pub(crate) fn pick_from_clipboard(&mut self) -> Result<(), String> {
+    pub(crate) fn pick_from_clipboard(&mut self) -> Result<(), BlpErr> {
         // ---------- macOS: file:// из Finder ----------
         #[cfg(target_os = "macos")]
         {
             use crate::ui::viewer::layout::file_picker::macos_paste_event::pasteboard_file_path;
 
             if let Some(path) = pasteboard_file_path().filter(|p| p.is_file()) {
-                self.pick_from_file(Some(path));
+                self.pick_from_file(Some(path))?;
                 return Ok(());
             }
         }
@@ -21,10 +22,13 @@ impl App {
         use std::sync::mpsc;
         use std::thread;
 
-        let mut cb = Clipboard::new().map_err(|e| format!("Clipboard init failed: {e}"))?;
+        // init буфера обмена
+        let mut cb = Clipboard::new().map_err(|e| BlpErr::new("error-clipboard-init-failed").push_std(e))?;
+
+        // получаем RGBA-данные из буфера
         let img = cb
             .get_image()
-            .map_err(|e| format!("No image in clipboard: {e}"))?;
+            .map_err(|e| BlpErr::new("error-clipboard-no-image").push_std(e))?;
 
         let w = img.width as u32;
         let h = img.height as u32;
@@ -37,14 +41,19 @@ impl App {
             px.swap(0, 2);
         }
 
-        let rgba_img = image::RgbaImage::from_raw(w, h, rgba).ok_or_else(|| "Invalid clipboard image buffer".to_string())?;
+        // собираем RgbaImage (проверяем валидность буфера)
+        let rgba_img = image::RgbaImage::from_raw(w, h, rgba).ok_or_else(|| {
+            BlpErr::new("error-clipboard-invalid-image-buffer")
+                .with_arg("width", w)
+                .with_arg("height", h)
+        })?;
         let dyn_img = DynamicImage::ImageRgba8(rgba_img);
 
-        // Кодируем во временный PNG — твой декодер ест png/jpg/…
+        // кодируем во временный PNG (твой декодер ест png/jpg/…)
         let mut buf = Vec::new();
         dyn_img
             .write_to(&mut Cursor::new(&mut buf), ImageFormat::Png)
-            .map_err(|e| format!("Encode PNG failed: {e}"))?;
+            .map_err(|e| BlpErr::new("error-clipboard-encode-png-failed").push_std(e))?;
 
         // Сброс состояния + запуск декодера
         self.picked_file = None;
@@ -58,7 +67,7 @@ impl App {
         self.loading = true;
 
         thread::spawn(move || {
-            let res = decode_input(DecodeInput::Bytes(buf));
+            let res = DecodeInput::Bytes(buf).decode();
             let _ = tx.send(res);
         });
 

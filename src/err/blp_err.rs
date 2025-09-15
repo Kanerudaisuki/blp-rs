@@ -1,35 +1,26 @@
 use crate::err::args::ArgVal;
-use crate::err::localize::Localizer;
-use fluent_templates::fluent_bundle::FluentArgs;
+use crate::err::cause::Cause;
 use std::error::Error;
 use std::{collections::BTreeMap, fmt, sync::Arc};
 
 #[derive(Debug, Clone)]
-pub struct AppErr {
+pub struct BlpErr {
     pub key: &'static str,
     pub args: BTreeMap<&'static str, ArgVal>,
     pub causes: Vec<Cause>,
 }
 
-#[derive(Debug, Clone)]
-pub enum Cause {
-    App(AppErr),
-    Std(Arc<dyn Error + Send + Sync>),
-}
-
-pub type AppResult<T> = Result<T, AppErr>;
-
-impl AppErr {
+impl BlpErr {
     /// Обернуть существующую ошибку контекстом (ключом), вложив её как причину.
     #[inline]
-    pub fn ctx(self, key: &'static str) -> AppErr {
-        AppErr::new(key).push_app(self)
+    pub fn ctx(self, key: &'static str) -> BlpErr {
+        BlpErr::new(key).push_blp(self)
     }
 
     /// То же, но с добавлением аргументов.
     #[inline]
-    pub fn ctx_with(self, key: &'static str, f: impl FnOnce(AppErr) -> AppErr) -> AppErr {
-        f(AppErr::new(key).push_app(self))
+    pub fn ctx_with(self, key: &'static str, f: impl FnOnce(BlpErr) -> BlpErr) -> BlpErr {
+        f(BlpErr::new(key).push_blp(self))
     }
 
     #[inline]
@@ -52,8 +43,8 @@ impl AppErr {
     }
 
     #[inline]
-    pub fn push_app(mut self, cause: AppErr) -> Self {
-        self.causes.push(Cause::App(cause));
+    pub fn push_blp(mut self, cause: BlpErr) -> Self {
+        self.causes.push(Cause::Blp(cause));
         self
     }
 
@@ -63,18 +54,9 @@ impl AppErr {
             .push(Cause::Std(Arc::new(cause)));
         self
     }
-
-    /// Локализованный текст этой ошибки (без детей).
-    pub fn localized_head<L: Localizer>(&self, loc: &L) -> String {
-        let mut fluent_args = FluentArgs::new();
-        for (k, v) in &self.args {
-            fluent_args.set(*k, v.to_fluent_owned());
-        }
-        loc.fmt(self.key, &fluent_args)
-    }
 }
 
-impl fmt::Display for AppErr {
+impl fmt::Display for BlpErr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Быстрая небогатая форма (ключ + перечисление args)
         write!(f, "{}(", self.key)?;
@@ -90,12 +72,12 @@ impl fmt::Display for AppErr {
     }
 }
 
-impl<E> From<E> for AppErr
+impl<E> From<E> for BlpErr
 where
     E: Error + Send + Sync + 'static,
 {
     fn from(e: E) -> Self {
-        AppErr::new("std-error")
+        BlpErr::new("std-error")
             .with_arg("msg", e.to_string())
             .push_std(e)
     }

@@ -1,4 +1,4 @@
-use crate::err::app_err::AppErr;
+use crate::err::blp_err::BlpErr;
 use crate::header::Header;
 use crate::image_blp::ImageBlp;
 use crate::mipmap::Mipmap;
@@ -12,7 +12,7 @@ impl ImageBlp {
         header: &Header,
         slices: Vec<Option<&[u8]>>,
         mipmaps: &mut Vec<Mipmap>,
-    ) -> Result<(), AppErr> {
+    ) -> Result<(), BlpErr> {
         let mut palette = [[0u8; 3]; 256];
         for i in 0..256 {
             let color = cursor.read_u32::<LittleEndian>()?;
@@ -38,7 +38,7 @@ impl Mipmap {
         height: u32,
         palette: &[[u8; 3]; 256],
         alpha_bits: u32,
-    ) -> Result<Mipmap, AppErr> {
+    ) -> Result<Mipmap, BlpErr> {
         let pixel_count = (width * height) as usize;
 
         let mut indices = vec![0u8; pixel_count];
@@ -50,7 +50,7 @@ impl Mipmap {
             1 => (pixel_count + 7) / 8,
             4 => (pixel_count + 1) / 2,
             8 => pixel_count,
-            _ => return Err(AppErr::new("blp.version.invalid").with_arg("msg", "unsupported alpha bits")),
+            _ => return Err(BlpErr::new("blp.version.invalid").with_arg("msg", "unsupported alpha bits")),
         };
         let mut alpha_raw = vec![0u8; alpha_bytes];
         if alpha_bytes > 0 {

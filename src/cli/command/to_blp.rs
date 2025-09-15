@@ -1,11 +1,11 @@
-use crate::err::app_err::AppErr;
+use crate::err::blp_err::BlpErr;
 use crate::export::export_blp::export_blp;
 use crate::image_blp::ImageBlp;
 use crate::util::resolve_output_path::resolve_output_path;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub fn to_blp(input: &Path, output: Option<&PathBuf>) -> Result<(), AppErr> {
+pub fn to_blp(input: &Path, output: Option<&PathBuf>) -> Result<(), BlpErr> {
     input.try_exists()?;
     let data = fs::read(input)?;
     let img = ImageBlp::from_buf(&data)?;

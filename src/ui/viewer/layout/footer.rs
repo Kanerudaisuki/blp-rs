@@ -5,12 +5,8 @@ use eframe::egui::{Align, Color32, ComboBox, Context, CursorIcon, Frame, Label, 
 
 impl App {
     pub(crate) fn draw_footer(&mut self, ctx: &Context) {
-        if self.error.is_some() {
-            let plain = self
-                .error
-                .to_owned()
-                .unwrap()
-                .to_string();
+        if let Some(err) = &self.error {
+            let plain = self.err_text_localized(err);
 
             TopBottomPanel::bottom("footer_error")
                 .resizable(true)

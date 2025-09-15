@@ -1,3 +1,3 @@
-mod from_buf_image;
-mod from_buf;
-mod from_buf_blp;
+mod buf_image;
+mod buf;
+mod buf_blp;

@@ -12,7 +12,9 @@ impl App {
     pub(crate) fn draw_file_picker(&mut self, ctx: &Context) {
         for f in ctx.input(|i| i.raw.dropped_files.clone()) {
             if let Some(path) = f.path {
-                self.pick_from_file(Some(path));
+                if let Err(e) = self.pick_from_file(Some(path)) {
+                    self.error = Some(e);
+                }
             }
         }
 
@@ -129,8 +131,7 @@ impl App {
         }
         if click_paste || paste_hotkey {
             if let Err(e) = self.pick_from_clipboard() {
-                //TODO
-                //self.err_set(e);
+                self.error = Some(e);
             }
         }
     }
@@ -150,7 +151,9 @@ impl App {
         }
 
         if let Some(path) = dlg.pick_file() {
-            self.pick_from_file(Some(path));
+            if let Err(e) = self.pick_from_file(Some(path)) {
+                self.error = Some(e);
+            }
         }
     }
 }
