@@ -13,6 +13,14 @@ filter-all-images = Усі зображення
 save-as-blp = Зберегти як BLP
 save-as-png = Зберегти як PNG
 
+save-location-select-path = Обрати шлях
+save-location-hint-select-path = Файли зберігатимуться у вибрану теку. Натисніть, щоб перемкнути режим.
+
+save-location-same-dir = Зберегти поруч
+save-location-hint-same-dir = Файли зберігатимуться поруч із вихідним. Натисніть, щоб перемкнути режим.
+
+save-location-hint-disabled-no-source = Неможливо зберегти «поруч», доки не обрано вихідний файл.
+
 error = Помилка
 
 close = Закрити

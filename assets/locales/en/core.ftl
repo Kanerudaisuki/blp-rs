@@ -13,6 +13,14 @@ filter-all-images = All images
 save-as-blp = Save as BLP
 save-as-png = Save as PNG
 
+save-location-select-path = Choose path
+save-location-hint-select-path = Files will be saved to the selected folder. Click to toggle.
+
+save-location-same-dir = Save next to source
+save-location-hint-same-dir = Files will be saved next to the source file. Click to toggle.
+
+save-location-hint-disabled-no-source = Can't save “next to source” until a source file is selected.
+
 error = Error
 
 close = Close

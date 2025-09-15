@@ -1,40 +1,25 @@
 use crate::err::blp_err::BlpErr;
 use crate::export::export_blp::export_blp;
 use crate::export::export_png::export_png;
-use crate::export::last_dir::{load_last_dir, save_last_dir};
 use crate::ui::viewer::app::App;
+use crate::ui::viewer::layout::file_saver::save_same_dir::save_same_dir_save;
 use eframe::egui::{Button, Context, CursorIcon, Frame, Margin, ScrollArea, Sense, SidePanel, vec2};
-use std::path::PathBuf;
 
 impl App {
     fn default_names(&self) -> (String, String) {
-        let stem = self
-            .current_path
-            .as_ref()
-            .and_then(|p| p.file_stem())
-            .map(|s| s.to_string_lossy().into_owned())
-            .unwrap_or_else(|| "texture".to_string());
+        // 1) picked_file → stem
+        if let Some(p) = self.picked_file.as_ref() {
+            if let Some(stem) = p
+                .file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+            {
+                return (format!("{stem}.blp"), format!("{stem}.png"));
+            }
+        }
+        // 2) если файл не выбран, но пришло из клипборда — назовём "clipboard"
+        // (если у тебя есть отдельный флаг/имя — подставь здесь; пока просто fallback)
+        let stem = if self.picked_file.is_none() { "clipboard" } else { "texture" }.to_string();
         (format!("{stem}.blp"), format!("{stem}.png"))
-    }
-
-    fn pick_save_path(&mut self, default_name: &str, ext: &str, desc: &str) -> Option<PathBuf> {
-        let mut dlg = rfd::FileDialog::new()
-            .set_file_name(default_name)
-            .add_filter(desc, &[ext]);
-
-        if let Some(dir) = load_last_dir().or_else(|| {
-            self.current_path
-                .as_ref()
-                .and_then(|p| p.parent().map(|pp| pp.to_path_buf()))
-        }) {
-            dlg = dlg.set_directory(dir);
-        }
-
-        let path = dlg.save_file()?;
-        if let Some(parent) = path.parent() {
-            let _ = save_last_dir(parent); // best-effort
-        }
-        Some(path)
     }
 
     pub(crate) fn draw_panel_left(&mut self, ctx: &Context) {
@@ -97,6 +82,36 @@ impl App {
                                         }
                                     }
                                 }
+
+                                ui.add_space(ui.spacing().item_spacing.y);
+
+                                // ---------- КНОПКА-ПЕРЕКЛЮЧАТЕЛЬ "ВЫБРАТЬ ПУТЬ / СОХРАНИТЬ РЯДОМ" ----------
+                                // label/hint по текущему состоянию:
+                                let (label_key, hint_key) = if self.save_same_dir {
+                                    ("save-location-same-dir", "save-location-hint-same-dir")
+                                } else {
+                                    ("save-location-select-path", "save-location-hint-select-path")
+                                };
+                                let label = self.tr(label_key);
+                                let hint = if self.picked_file.is_some() {
+                                    self.tr(hint_key)
+                                } else {
+                                    // отдельный hint, если кнопка заблокирована
+                                    self.tr("save-location-hint-disabled-no-source")
+                                };
+
+                                // Блокировка, если нет исходного файла
+                                ui.add_enabled_ui(self.picked_file.is_some(), |ui| {
+                                    if ui
+                                        .add_sized([ui.available_width(), 0.0], Button::new(label))
+                                        .on_hover_text(hint)
+                                        .on_hover_cursor(CursorIcon::PointingHand)
+                                        .clicked()
+                                    {
+                                        self.save_same_dir = !self.save_same_dir;
+                                        let _ = save_same_dir_save(self.save_same_dir);
+                                    }
+                                });
                             });
                         });
 

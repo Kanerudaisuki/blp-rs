@@ -13,6 +13,14 @@ filter-all-images = Все изображения
 save-as-blp = Сохранить как BLP
 save-as-png = Сохранить как PNG
 
+save-location-select-path = Выбрать путь
+save-location-hint-select-path = Файлы будут сохраняться в выбранную папку. Нажмите, чтобы переключить режим.
+
+save-location-same-dir = Сохранить рядом
+save-location-hint-same-dir = Файлы будут сохраняться рядом с исходником. Нажмите, чтобы переключить режим.
+
+save-location-hint-disabled-no-source = Нельзя сохранить «рядом», пока не выбран исходный файл.
+
 error = Ошибка
 
 close = Закрыть
