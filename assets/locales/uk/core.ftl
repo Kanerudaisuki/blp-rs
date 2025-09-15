@@ -21,6 +21,12 @@ save-location-hint-same-dir = Файли зберігатимуться пору
 
 save-location-hint-disabled-no-source = Неможливо зберегти «поруч», доки не обрано вихідний файл.
 
+save-tooltip-direct = Буде збережено до:
+save-tooltip-dialog = Буде відкрито діалог збереження.
+save-tooltip-name = Ім’я:
+save-tooltip-folder = Тека:
+save-tooltip-dialog-dir-unknown = невідомо
+
 error = Помилка
 
 close = Закрити
@@ -35,6 +41,11 @@ mips-all = Усі
 mips-none = Жоден
 hint-mips-all = Увімкнути всі рівні міпів
 hint-mips-none = Вимкнути всі рівні міпів
+
+blp-texture = BLP текстура
+png-image = PNG зображення
+
+error-save-no-image = Немає зображення для збереження
 
 error-poll-decoder = Внутрішня помилка декодера.
 

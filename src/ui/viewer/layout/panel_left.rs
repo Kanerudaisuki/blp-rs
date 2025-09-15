@@ -7,7 +7,6 @@ use eframe::egui::{Button, Context, CursorIcon, Frame, Margin, ScrollArea, Sense
 
 impl App {
     fn default_names(&self) -> (String, String) {
-        // 1) picked_file → stem
         if let Some(p) = self.picked_file.as_ref() {
             if let Some(stem) = p
                 .file_stem()
@@ -16,10 +15,17 @@ impl App {
                 return (format!("{stem}.blp"), format!("{stem}.png"));
             }
         }
-        // 2) если файл не выбран, но пришло из клипборда — назовём "clipboard"
-        // (если у тебя есть отдельный флаг/имя — подставь здесь; пока просто fallback)
-        let stem = if self.picked_file.is_none() { "clipboard" } else { "texture" }.to_string();
+        // «имя из буфера» если нет файла; иначе общий фолбек
+        let stem = if self.picked_file.is_none() { "clipboard" } else { "texture" };
         (format!("{stem}.blp"), format!("{stem}.png"))
+    }
+
+    fn run_export<F>(&mut self, f: F)
+    where
+        F: FnOnce(&crate::image_blp::ImageBlp) -> Result<(), BlpErr>,
+    {
+        let res = if let Some(img) = self.blp.as_ref() { f(img) } else { Err(BlpErr::new("error-save-no-image")) };
+        self.error = res.err();
     }
 
     pub(crate) fn draw_panel_left(&mut self, ctx: &Context) {
@@ -38,80 +44,68 @@ impl App {
                         Frame { inner_margin: Margin { left: spx_i, right: spx_i, top: 0, bottom: 0 }, ..Default::default() }.show(ui, |ui| {
                             ui.add_space(ui.spacing().item_spacing.y * 2.0);
 
-                            let full_width = ui.available_width();
+                            // ------- Переключатель «Выбрать путь / Сохранить рядом» -------
+                            let (label_key, hint_key) = if self.save_same_dir {
+                                ("save-location-same-dir", "save-location-hint-same-dir")
+                            } else {
+                                ("save-location-select-path", "save-location-hint-select-path")
+                            };
+                            let label = self.tr(label_key);
+                            let hint = if self.picked_file.is_some() {
+                                self.tr(hint_key)
+                            } else {
+                                self.tr("save-location-hint-disabled-no-source")
+                            };
 
-                            // Save as BLP…
-                            ui.add_enabled_ui(!self.loading, |ui| {
+                            ui.add_enabled_ui(self.picked_file.is_some(), |ui| {
                                 if ui
-                                    .add_sized([ui.available_width(), 0.0], Button::new(self.tr("save-as-blp")))
+                                    .add_sized([ui.available_width(), 0.0], Button::new(label))
+                                    .on_hover_text(hint)
                                     .on_hover_cursor(CursorIcon::PointingHand)
                                     .clicked()
                                 {
-                                    let (def_blp, _) = self.default_names();
-                                    if let Some(path) = self.pick_save_path(&def_blp, "blp", "BLP texture") {
-                                        let res = if let Some(img) = self.blp.as_ref() {
-                                            export_blp(img, &path, 100)
-                                        } else {
-                                            Err(BlpErr::new("no-image").with_arg("msg", "No image loaded"))
-                                        };
+                                    self.save_same_dir = !self.save_same_dir;
+                                    let _ = save_same_dir_save(self.save_same_dir);
+                                }
+                            });
 
-                                        self.error = match res {
-                                            Ok(()) => None,
-                                            Err(e) => Some(e),
-                                        }
+                            ui.add_space(ui.spacing().item_spacing.y);
+
+                            let full_width = ui.available_width();
+
+                            // ------- Кнопки сохранения с тултипом конечного пути -------
+                            ui.add_enabled_ui(!self.loading, |ui| {
+                                // Save as BLP…
+                                let (def_blp, _) = self.default_names();
+                                let blp_preview = self.preview_save_path(&def_blp, "blp");
+                                let blp_tt = self.save_preview_tooltip(&blp_preview);
+
+                                if ui
+                                    .add_sized([full_width, 0.0], Button::new(self.tr("save-as-blp")))
+                                    .on_hover_text(blp_tt)
+                                    .on_hover_cursor(CursorIcon::PointingHand)
+                                    .clicked()
+                                {
+                                    if let Some(path) = self.pick_save_path(&def_blp, "blp", self.tr("blp-texture")) {
+                                        self.run_export(|img| export_blp(img, &path, 100));
                                     }
                                 }
 
                                 // Save as PNG…
+                                let (_, def_png) = self.default_names();
+                                let png_preview = self.preview_save_path(&def_png, "png");
+                                let png_tt = self.save_preview_tooltip(&png_preview);
+
                                 if ui
                                     .add_sized([full_width, 0.0], Button::new(self.tr("save-as-png")))
+                                    .on_hover_text(png_tt)
                                     .on_hover_cursor(CursorIcon::PointingHand)
                                     .clicked()
                                 {
-                                    let (_, def_png) = self.default_names();
-                                    if let Some(path) = self.pick_save_path(&def_png, "png", "PNG image") {
-                                        let res = if let Some(img) = self.blp.as_ref() {
-                                            export_png(img, &path)
-                                        } else {
-                                            Err(BlpErr::new("no-image").with_arg("msg", "No image loaded"))
-                                        };
-
-                                        self.error = match res {
-                                            Ok(()) => None,
-                                            Err(e) => Some(e),
-                                        }
+                                    if let Some(path) = self.pick_save_path(&def_png, "png", self.tr("png-image")) {
+                                        self.run_export(|img| export_png(img, &path));
                                     }
                                 }
-
-                                ui.add_space(ui.spacing().item_spacing.y);
-
-                                // ---------- КНОПКА-ПЕРЕКЛЮЧАТЕЛЬ "ВЫБРАТЬ ПУТЬ / СОХРАНИТЬ РЯДОМ" ----------
-                                // label/hint по текущему состоянию:
-                                let (label_key, hint_key) = if self.save_same_dir {
-                                    ("save-location-same-dir", "save-location-hint-same-dir")
-                                } else {
-                                    ("save-location-select-path", "save-location-hint-select-path")
-                                };
-                                let label = self.tr(label_key);
-                                let hint = if self.picked_file.is_some() {
-                                    self.tr(hint_key)
-                                } else {
-                                    // отдельный hint, если кнопка заблокирована
-                                    self.tr("save-location-hint-disabled-no-source")
-                                };
-
-                                // Блокировка, если нет исходного файла
-                                ui.add_enabled_ui(self.picked_file.is_some(), |ui| {
-                                    if ui
-                                        .add_sized([ui.available_width(), 0.0], Button::new(label))
-                                        .on_hover_text(hint)
-                                        .on_hover_cursor(CursorIcon::PointingHand)
-                                        .clicked()
-                                    {
-                                        self.save_same_dir = !self.save_same_dir;
-                                        let _ = save_same_dir_save(self.save_same_dir);
-                                    }
-                                });
                             });
                         });
 

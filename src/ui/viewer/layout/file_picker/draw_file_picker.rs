@@ -1,8 +1,8 @@
+use crate::ext::path::to_abs_string_with_macros::PathMacrosExt;
 use crate::flargs;
 use crate::ui::i18n::shortcut::platform_cmd_shortcut;
 use crate::ui::viewer::app::App;
 use crate::ui::viewer::layout::file_picker::hotkey_pressed::hotkey_pressed;
-use crate::ui::viewer::layout::file_picker::safe_path::abs_string_with_macros;
 use crate::ui::widget::text_edit_ex::TextEditLikeButtonChain;
 use eframe::egui::text::{LayoutJob, TextWrapping};
 use eframe::egui::{Align, Button, Color32, Context, CornerRadius, CursorIcon, Frame, Galley, Key, Layout, Margin, Sense, Stroke, StrokeKind, TextEdit, TextFormat, TextStyle, TopBottomPanel, pos2, vec2};
@@ -69,10 +69,12 @@ impl App {
                     let w = ui.available_width();
 
                     if let Some(path) = self.picked_file.clone() {
-                        let mut s = abs_string_with_macros(&path);
+                        let mut s = path.to_abs_string_with_macros();
                         ui.add_sized(
                             [w, row_h],
                             TextEdit::singleline(&mut s)
+                                //.interactive(false)
+
                                 .font(TextStyle::Monospace)
                                 .cursor_at_end(true)
                                 .desired_width(w)

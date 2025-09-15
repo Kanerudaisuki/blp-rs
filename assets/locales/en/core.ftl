@@ -16,10 +16,16 @@ save-as-png = Save as PNG
 save-location-select-path = Choose path
 save-location-hint-select-path = Files will be saved to the selected folder. Click to toggle.
 
-save-location-same-dir = Save next to source
-save-location-hint-same-dir = Files will be saved next to the source file. Click to toggle.
+save-location-same-dir = Save beside
+save-location-hint-same-dir = Files will be saved beside the source file. Click to toggle.
 
 save-location-hint-disabled-no-source = Can't save “next to source” until a source file is selected.
+
+save-tooltip-direct = Will be saved to:
+save-tooltip-dialog = A save dialog will open.
+save-tooltip-name = Name:
+save-tooltip-folder = Folder:
+save-tooltip-dialog-dir-unknown = unknown
 
 error = Error
 
@@ -35,6 +41,11 @@ mips-all = All
 mips-none = None
 hint-mips-all = Enable all mip levels
 hint-mips-none = Disable all mip levels
+
+blp-texture = BLP texture
+png-image = PNG image
+
+error-save-no-image = No image to save
 
 error-poll-decoder = Internal decoder error.
 
