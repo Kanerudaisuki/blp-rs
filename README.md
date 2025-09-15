@@ -13,13 +13,15 @@ which brings syntax support, analyzers, and more tooling for Warcraft III moddin
 Wanna know how BLP works? Dive into the spec:  
 👉 [BLP Specification](https://github.com/WarRaft/BLP)
 
----
+## Localization
 
-### What’s still missing
+All localization files are stored in [assets/locales](https://github.com/WarRaft/blp-rs/tree/main/assets/locales).  
+You are welcome to contribute a translation in your own language using whatever workflow is most convenient for you, and
+I will include it in the program.
 
-- Converting images *back* into BLP
-- Proper BLP2 support
-- CLI tool (not implemented yet)
+It is **not required** to translate every key: any missing strings will automatically fall back to the default English (
+`en`) localization. This means you can start small and expand the translation over time without breaking anything.
+
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/WarRaft/blp-rs/refs/heads/main/preview/logo.png" alt="BLP"/>
