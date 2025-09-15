@@ -36,7 +36,8 @@ impl App {
                                 let row_h = ui.spacing().interact_size.y;
                                 ui.columns(2, |cols| {
                                     if cols[0]
-                                        .add_sized([cols[0].available_width(), row_h], Button::new("All"))
+                                        .add_sized([cols[0].available_width(), row_h], Button::new(self.tr("mips-all")))
+                                        .on_hover_text(self.tr("hint-mips-all"))
                                         .on_hover_cursor(CursorIcon::PointingHand)
                                         .clicked()
                                     {
@@ -44,7 +45,8 @@ impl App {
                                     }
 
                                     if cols[1]
-                                        .add_sized([cols[1].available_width(), row_h], Button::new("None"))
+                                        .add_sized([cols[1].available_width(), row_h], Button::new(self.tr("mips-none")))
+                                        .on_hover_text(self.tr("hint-mips-none"))
                                         .on_hover_cursor(CursorIcon::PointingHand)
                                         .clicked()
                                     {

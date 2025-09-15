@@ -23,6 +23,11 @@ copy-error-hint = Скопировать сообщение об ошибке в
 
 no-image = Нет изображения
 
+mips-all = Все
+mips-none = Никто
+hint-mips-all = Включить все уровни мипов
+hint-mips-none = Отключить все уровни мипов
+
 error-poll-decoder = Внутренняя ошибка декодера.
 
 error-file-not-found = Файл не найден: { $path }

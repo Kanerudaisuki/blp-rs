@@ -95,7 +95,7 @@ pub fn apply_style(ctx: &Context) {
             icon_width_inner: 10.0,
             icon_spacing: 6.0,
             default_area_size: vec2(640.0, 480.0),
-            tooltip_width: 320.0,
+            tooltip_width: f32::INFINITY,
             menu_width: 360.0,
             menu_spacing: 8.0,
             indent_ends_with_horizontal_line: false,

@@ -2,7 +2,7 @@
 name = "blp-rs"
 version = "0.1.8"
 authors = ["nazarpunk <nazarpunk@gmail.com>"]
-repository = "https://github.com/WarRaft/JASS-Tree-sitter-rust"
+repository = "https://github.com/WarRaft/blp-rs"
 edition = "2024"
 
 [dependencies]
@@ -17,10 +17,10 @@ clap = { version = "4.5.47", features = ["derive"] }
 rfd = "0.15.4"
 arboard = "3.6.1"
 mozjpeg = "0.10.13"
-eframe = { version = "0.32.2", features = ["wgpu", "persistence"] }
-serde = { version = "1.0.219", features = ["derive"] }
+eframe = { version = "0.32.3", features = ["wgpu", "persistence"] }
+serde = { version = "1.0.223", features = ["derive"] }
 include_dir = "0.7.4"
-serde_json = "1.0.143"
+serde_json = "1.0.145"
 normpath = "1.4.0"
 fluent-templates = "0.13.1"
 unic-langid = "0.9.6"
@@ -58,4 +58,4 @@ icns = "0.3.1"   # https://crates.io/crates/icns
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26.1"
-objc = "0.2"
+objc = "0.2.7"

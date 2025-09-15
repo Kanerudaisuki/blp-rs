@@ -6,3 +6,4 @@ mod hotkey_pressed;
 mod pick_from_file;
 mod pick_from_clipboard;
 mod safe_path;
+mod file_dialog_open;

@@ -1,7 +1,6 @@
 use crate::flargs;
 use crate::ui::i18n::shortcut::platform_cmd_shortcut;
 use crate::ui::viewer::app::App;
-use crate::ui::viewer::layout::file_picker::all_image_exts::all_image_exts;
 use crate::ui::viewer::layout::file_picker::hotkey_pressed::hotkey_pressed;
 use crate::ui::viewer::layout::file_picker::safe_path::abs_string_with_macros;
 use crate::ui::widget::text_edit_ex::TextEditLikeButtonChain;
@@ -131,27 +130,6 @@ impl App {
         }
         if click_paste || paste_hotkey {
             if let Err(e) = self.pick_from_clipboard() {
-                self.error = Some(e);
-            }
-        }
-    }
-
-    fn file_dialog_open(&mut self) {
-        let mut dlg = rfd::FileDialog::new()
-            .set_title(self.tr("select-image"))
-            .add_filter(self.tr("filter-all-images"), all_image_exts());
-
-        if let Some(dir) = self
-            .picked_file
-            .as_ref()
-            .and_then(|p| p.parent().map(|d| d.to_path_buf()))
-            .or_else(|| std::env::current_dir().ok())
-        {
-            dlg = dlg.set_directory(dir);
-        }
-
-        if let Some(path) = dlg.pick_file() {
-            if let Err(e) = self.pick_from_file(Some(path)) {
                 self.error = Some(e);
             }
         }

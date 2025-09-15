@@ -23,6 +23,11 @@ copy-error-hint = Copy error message to clipboard
 
 no-image = No image
 
+mips-all = All
+mips-none = None
+hint-mips-all = Enable all mip levels
+hint-mips-none = Disable all mip levels
+
 error-poll-decoder = Internal decoder error.
 
 error-file-not-found = File not found: { $path }
