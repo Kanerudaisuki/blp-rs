@@ -76,7 +76,7 @@ impl App {
                 let ir = ComboBox::from_id_salt("menu_lng")
                     .selected_text(self.lng.name())
                     .show_ui(ui, |ui| {
-                        for cand in [LngList::Uk, LngList::Ru, LngList::En] {
+                        for cand in [LngList::Uk, LngList::Ru, LngList::En, LngList::Zh] {
                             let sel = self.lng == cand;
                             if ui
                                 .selectable_label(sel, cand.name())
