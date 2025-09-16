@@ -54,6 +54,7 @@ icon = [
 image = "0.25.8"
 ico = "0.4.0"
 icns = "0.3.1"   # https://crates.io/crates/icns
+winresource = "0.1.23"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26.1"
