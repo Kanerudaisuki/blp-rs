@@ -8,6 +8,7 @@ pub enum LngList {
     En,
     Ru,
     Uk,
+    Zh,
 }
 
 impl LngList {
@@ -16,6 +17,7 @@ impl LngList {
             LngList::En => langid!("en"),
             LngList::Ru => langid!("ru"),
             LngList::Uk => langid!("uk"),
+            LngList::Zh => langid!("zh"),
         }
     }
     pub fn name(self) -> &'static str {
@@ -23,6 +25,7 @@ impl LngList {
             LngList::En => "English",
             LngList::Ru => "Русский",
             LngList::Uk => "Українська",
+            LngList::Zh => "中文",
         }
     }
 }
