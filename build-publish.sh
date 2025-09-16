@@ -40,7 +40,13 @@ git push origin "$TAG"
 [[ -d "$DIST_DIR" ]] || { echo "❌ Нет каталога $DIST_DIR. Сначала запусти ./build-only.sh"; exit 1; }
 
 echo "🚀 Release $TAG"
-mapfile -t ASSETS < <(find "$DIST_DIR" -maxdepth 1 -type f | sort)
+
+# Соберём явный список файлов (без директорий) — совместимо с bash 3.2
+ASSETS=()
+while IFS= read -r -d '' f; do
+  ASSETS+=("$f")
+done < <(find "$DIST_DIR" -maxdepth 1 -type f -print0)
+
 gh release create "$TAG" "${ASSETS[@]}" \
   --title "$PROJECT_NAME $NEW_VERSION" \
   --generate-notes
