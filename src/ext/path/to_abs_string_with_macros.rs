@@ -112,6 +112,10 @@ fn has_prefix_boundary(s: &str, pref: &str, ci: bool) -> bool {
     if s.len() < pref.len() {
         return false;
     }
+    // Проверяем, что позиция разреза находится на границе символа
+    if !s.is_char_boundary(pref.len()) {
+        return false;
+    }
     let (head, tail) = s.split_at(pref.len());
     let eq = if ci { head.eq_ignore_ascii_case(pref) } else { head == pref };
     eq && (tail.is_empty() || matches!(tail.as_bytes()[0], b'/' | b'\\'))
