@@ -5,7 +5,7 @@ use crate::ui::viewer::app::App;
 use crate::ui::viewer::layout::file_picker::hotkey_pressed::hotkey_pressed;
 use crate::ui::widget::text_edit_ex::TextEditLikeButtonChain;
 use eframe::egui::text::{LayoutJob, TextWrapping};
-use eframe::egui::{Align, Button, Color32, Context, CornerRadius, CursorIcon, Frame, Galley, Key, Layout, Margin, Sense, Stroke, StrokeKind, TextEdit, TextFormat, TextStyle, TopBottomPanel, pos2, vec2};
+use eframe::egui::{Align, Button, Color32, Context, CornerRadius, CursorIcon, Frame, Galley, Key, Layout, Margin, Sense, Stroke, StrokeKind, TextEdit, TextFormat, TopBottomPanel, pos2, vec2};
 
 impl App {
     pub(crate) fn draw_file_picker(&mut self, ctx: &Context) {
@@ -73,9 +73,6 @@ impl App {
                         ui.add_sized(
                             [w, row_h],
                             TextEdit::singleline(&mut s)
-                                //.interactive(false)
-
-                                .font(TextStyle::Monospace)
                                 .cursor_at_end(true)
                                 .desired_width(w)
                                 .like_button(),
@@ -93,7 +90,6 @@ impl App {
                                 s.to_owned(),
                                 TextFormat {
                                     color: style.visuals.text_color(), // базовый цвет, прозрачность ниже
-                                    italics: true,                     // << вот это включает курсив
                                     ..Default::default()
                                 },
                             );

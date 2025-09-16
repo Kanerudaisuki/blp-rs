@@ -1,3 +1,4 @@
+use crate::ui::i18n::detect_os_lang::detect_os_lang;
 use crate::ui::i18n::lng_list::LngList;
 use serde::{Deserialize, Serialize};
 
@@ -9,23 +10,6 @@ pub struct LngPrefs {
 
 const APP: &str = env!("CARGO_PKG_NAME");
 const CFG: Option<&str> = Some(stringify!(LngPrefs));
-
-fn detect_os_lang() -> LngList {
-    let raw = sys_locale::get_locale()
-        .unwrap_or_default()
-        .to_lowercase();
-    match raw
-        .split(|c| c == '-' || c == '_')
-        .next()
-        .unwrap_or("")
-    {
-        "uk" => LngList::Uk,
-        "ru" => LngList::Ru,
-        "zh" => LngList::Zh,
-        "tc" => LngList::Tc,
-        _ => LngList::En,
-    }
-}
 
 pub fn load_prefs() -> LngPrefs {
     let mut p = confy::load::<LngPrefs>(APP, CFG).unwrap_or_default();
