@@ -32,18 +32,28 @@ pub fn install_fonts(ctx: &Context) {
     let cjk_tc_regular: String = FontFace::Regular.cjk_tc_key().into();
     let cjk_regular: String = FontFace::Regular.cjk_key().into();
     let regular: String = FontFace::Regular.key().into();
+    
     defs.families
         .get_mut(&FontFamily::Proportional)
         .unwrap()
-        .insert(0, cjk_tc_regular);
+        .insert(0, cjk_tc_regular.clone());
     defs.families
         .get_mut(&FontFamily::Proportional)
+        .unwrap()
+        .insert(1, cjk_regular.clone());
+    
+    defs.families
+        .get_mut(&FontFamily::Monospace)
+        .unwrap()
+        .insert(0, cjk_tc_regular);
+    defs.families
+        .get_mut(&FontFamily::Monospace)
         .unwrap()
         .insert(1, cjk_regular);
     defs.families
         .get_mut(&FontFamily::Monospace)
         .unwrap()
-        .insert(0, regular);
+        .insert(2, regular);
 
     ctx.set_fonts(defs);
 }
