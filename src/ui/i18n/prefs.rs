@@ -22,6 +22,7 @@ fn detect_os_lang() -> LngList {
         "uk" => LngList::Uk,
         "ru" => LngList::Ru,
         "zh" => LngList::Zh,
+        "tc" => LngList::Tc,
         _ => LngList::En,
     }
 }
