@@ -1,4 +1,4 @@
-use crate::err::blp_err::BlpErr;
+use crate::err::error::BlpError;
 use crate::image_blp::MAX_MIPS;
 use crate::ui::viewer::app::App;
 use eframe::egui::{ColorImage, Context, TextureOptions, vec2};
@@ -51,7 +51,7 @@ impl App {
             // === ошибка из воркера (AppErr) ===
             Ok(Err(err)) => {
                 // Вкладываем как причину в "внешний" ключ, если нужен контекст
-                self.error = Some(BlpErr::new("error-poll-decoder").push_blp(err));
+                self.error = Some(BlpError::new("error-poll-decoder").push_blp(err));
                 self.blp = None;
                 self.loading = false;
                 // rx дропаем
@@ -65,7 +65,7 @@ impl App {
 
             // === воркер умер — фиксируем явную ошибку ===
             Err(TryRecvError::Disconnected) => {
-                self.error = Some(BlpErr::new("blp.decode-thread-disconnected").with_arg("msg", "decoder thread disconnected"));
+                self.error = Some(BlpError::new("blp.decode-thread-disconnected").with_arg("msg", "decoder thread disconnected"));
                 self.blp = None;
                 self.loading = false;
                 // rx дропаем

@@ -1,4 +1,4 @@
-use crate::err::blp_err::BlpErr;
+use crate::err::error::BlpError;
 use crate::image_blp::{Header, ImageBlp, MAX_MIPS};
 use crate::mipmap::Mipmap;
 use crate::util::center_crop_to_pow2::center_crop_to_pow2;
@@ -8,14 +8,14 @@ use image::{
 };
 
 impl ImageBlp {
-    pub(crate) fn from_buf_image(buf: &[u8]) -> Result<Self, BlpErr> {
+    pub(crate) fn from_buf_image(buf: &[u8]) -> Result<Self, BlpError> {
         let img = image::load_from_memory(buf)
-            .map_err(|e| BlpErr::new("error-image-load").push_std(e))?
+            .map_err(|e| BlpError::new("error-image-load").push_std(e))?
             .to_rgba8();
 
         let (w0, h0) = img.dimensions();
         if w0 == 0 || h0 == 0 {
-            return Err(BlpErr::new("error-image-empty")
+            return Err(BlpError::new("error-image-empty")
                 .with_arg("width", w0)
                 .with_arg("height", h0));
         }

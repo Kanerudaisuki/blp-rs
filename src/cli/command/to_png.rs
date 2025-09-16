@@ -1,11 +1,11 @@
-use crate::err::blp_err::BlpErr;
+use crate::err::error::BlpError;
 use crate::export::export_png::export_png;
 use crate::image_blp::ImageBlp;
 use crate::util::resolve_output_path::resolve_output_path;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub fn to_png(input: &Path, output: Option<&PathBuf>) -> Result<(), BlpErr> {
+pub fn to_png(input: &Path, output: Option<&PathBuf>) -> Result<(), BlpError> {
     input.try_exists()?;
     let data = fs::read(input)?;
     let img = ImageBlp::from_buf(&data).map_err(|e| e.ctx("blp.decode-failed"))?;

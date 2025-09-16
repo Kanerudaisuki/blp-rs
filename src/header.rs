@@ -1,4 +1,4 @@
-use crate::err::blp_err::BlpErr;
+use crate::err::error::BlpError;
 use crate::image_blp::MAX_MIPS;
 use crate::texture_type::TextureType;
 use crate::version::Version;
@@ -24,17 +24,17 @@ pub struct Header {
 }
 
 impl Header {
-    pub fn parse(cursor: &mut Cursor<&[u8]>) -> Result<Self, BlpErr> {
+    pub fn parse(cursor: &mut Cursor<&[u8]>) -> Result<Self, BlpError> {
         let version_raw = cursor.read_u32::<BigEndian>()?;
         let version = Version::try_from(version_raw).map_err(|e| {
-            BlpErr::new("blp.version.invalid")
+            BlpError::new("blp.version.invalid")
                 .with_arg("got", version_raw) // полезно передать, что пришло
                 .with_arg("msg", e.to_string()) // текст первичной ошибки (если есть)
         })?;
 
         let texture_type_raw = cursor.read_u32::<LittleEndian>()?;
         let texture_type = TextureType::try_from(texture_type_raw).map_err(|e| {
-            BlpErr::new("blp.version.invalid")
+            BlpError::new("blp.version.invalid")
                 .with_arg("got", version_raw) // полезно передать, что пришло
                 .with_arg("msg", e.to_string()) // текст первичной ошибки (если есть)
         })?;

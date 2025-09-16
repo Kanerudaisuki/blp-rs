@@ -1,5 +1,5 @@
 use crate::decode::input::DecodeInput;
-use crate::err::blp_err::BlpErr;
+use crate::err::error::BlpError;
 use crate::ext::path::ensure_readable::EnsureReadable;
 use crate::ui::viewer::app::App;
 use std::path::PathBuf;
@@ -7,7 +7,7 @@ use std::sync::mpsc;
 use std::thread;
 
 impl App {
-    pub(crate) fn pick_from_file(&mut self, path: Option<PathBuf>) -> Result<(), BlpErr> {
+    pub(crate) fn pick_from_file(&mut self, path: Option<PathBuf>) -> Result<(), BlpError> {
         let Some(path) = path else {
             return Ok(()); // ничего не выбрано
         };

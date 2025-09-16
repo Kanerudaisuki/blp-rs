@@ -1,4 +1,4 @@
-pub mod blp_err;
+pub mod error;
 pub mod args;
 mod app;
 mod macros;

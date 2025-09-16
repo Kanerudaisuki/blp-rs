@@ -59,3 +59,11 @@ winresource = "0.1.23"
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26.1"
 objc = "0.2.7"
+
+[profile.release]
+lto = "thin"        # LTO включено только для финальной сборки
+codegen-units = 1
+opt-level = "z"
+strip = "symbols"
+panic = "abort"   # опционально; если мешает mozjpeg, закомментируй или ставь "unwind"
+

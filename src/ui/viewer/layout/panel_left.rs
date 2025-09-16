@@ -1,4 +1,4 @@
-use crate::err::blp_err::BlpErr;
+use crate::err::error::BlpError;
 use crate::export::export_blp::export_blp;
 use crate::export::export_png::export_png;
 use crate::ui::viewer::app::App;
@@ -22,9 +22,9 @@ impl App {
 
     fn run_export<F>(&mut self, f: F)
     where
-        F: FnOnce(&crate::image_blp::ImageBlp) -> Result<(), BlpErr>,
+        F: FnOnce(&crate::image_blp::ImageBlp) -> Result<(), BlpError>,
     {
-        let res = if let Some(img) = self.blp.as_ref() { f(img) } else { Err(BlpErr::new("error-save-no-image")) };
+        let res = if let Some(img) = self.blp.as_ref() { f(img) } else { Err(BlpError::new("error-save-no-image")) };
         self.error = res.err();
     }
 

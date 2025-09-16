@@ -1,9 +1,9 @@
-use crate::err::blp_err::BlpErr;
+use crate::err::error::BlpError;
 use std::error::Error;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub enum Cause {
-    Blp(BlpErr),
+    Blp(BlpError),
     Std(Arc<dyn Error + Send + Sync>),
 }

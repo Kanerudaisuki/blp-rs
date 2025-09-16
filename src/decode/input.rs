@@ -1,4 +1,4 @@
-use crate::err::blp_err::BlpErr;
+use crate::err::error::BlpError;
 use crate::ext::path::ensure_readable::EnsureReadable;
 use crate::image_blp::ImageBlp;
 use std::path::PathBuf;
@@ -9,7 +9,7 @@ pub enum DecodeInput {
 }
 
 impl DecodeInput {
-    pub fn decode(self) -> Result<ImageBlp, BlpErr> {
+    pub fn decode(self) -> Result<ImageBlp, BlpError> {
         match self {
             DecodeInput::Path(path) => {
                 let data = path.as_path().read_all()?;

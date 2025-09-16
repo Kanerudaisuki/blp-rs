@@ -1,27 +1,27 @@
-use crate::err::blp_err::BlpErr;
+use crate::err::error::BlpError;
 use std::{fs, io, io::Read, path::Path};
 
 /// Расширение для [`Path`] с проверкой и чтением файла.
 pub trait EnsureReadable {
     /// Проверить, что путь указывает на **читаемый обычный файл**.
     /// - Ошибки точные: файл не найден / нет прав / это каталог / не обычный файл / битый путь / ошибка метаданных.
-    fn ensure_readable(&self) -> Result<(), BlpErr>;
+    fn ensure_readable(&self) -> Result<(), BlpError>;
 
     /// Прочитать содержимое файла (одно открытие).
     /// Возвращает подробные ошибки открытия/чтения.
-    fn read_all(&self) -> Result<Vec<u8>, BlpErr>;
+    fn read_all(&self) -> Result<Vec<u8>, BlpError>;
 }
 
 impl EnsureReadable for Path {
-    fn ensure_readable(&self) -> Result<(), BlpErr> {
+    fn ensure_readable(&self) -> Result<(), BlpError> {
         // Проверяем метаданные (без открытия) — различаем типы объекта и базовые причины.
         match fs::symlink_metadata(self) {
             Ok(meta) => {
                 if meta.is_dir() {
-                    return Err(BlpErr::new("error-path-is-directory").with_arg("path", self.to_string_lossy().into_owned()));
+                    return Err(BlpError::new("error-path-is-directory").with_arg("path", self.to_string_lossy().into_owned()));
                 }
                 if !meta.is_file() {
-                    return Err(BlpErr::new("error-path-not-regular-file").with_arg("path", self.to_string_lossy().into_owned()));
+                    return Err(BlpError::new("error-path-not-regular-file").with_arg("path", self.to_string_lossy().into_owned()));
                 }
                 Ok(())
             }
@@ -33,7 +33,7 @@ impl EnsureReadable for Path {
                     InvalidInput => "error-invalid-path",
                     _ => "error-io-metadata",
                 };
-                Err(BlpErr::new(key)
+                Err(BlpError::new(key)
                     .with_arg("path", self.to_string_lossy().into_owned())
                     .with_arg("msg", e.to_string())
                     .push_std(e))
@@ -41,7 +41,7 @@ impl EnsureReadable for Path {
         }
     }
 
-    fn read_all(&self) -> Result<Vec<u8>, BlpErr> {
+    fn read_all(&self) -> Result<Vec<u8>, BlpError> {
         // Открываем (это и проверка прав/существования, и одно открытие).
         let mut file = fs::File::open(self).map_err(|e| {
             use io::ErrorKind::*;
@@ -51,7 +51,7 @@ impl EnsureReadable for Path {
                 InvalidInput => "error-invalid-path",
                 _ => "error-io-open-file",
             };
-            BlpErr::new(key)
+            BlpError::new(key)
                 .with_arg("path", self.to_string_lossy().into_owned())
                 .with_arg("msg", e.to_string())
                 .push_std(e)
@@ -61,7 +61,7 @@ impl EnsureReadable for Path {
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)
             .map_err(|e| {
-                BlpErr::new("error-io-read-file")
+                BlpError::new("error-io-read-file")
                     .with_arg("path", self.to_string_lossy().into_owned())
                     .with_arg("msg", e.to_string())
                     .push_std(e)

@@ -1,8 +1,8 @@
-use crate::err::blp_err::BlpErr;
+use crate::err::error::BlpError;
 use crate::image_blp::ImageBlp;
 
 impl ImageBlp {
-    pub fn from_buf(buf: &[u8]) -> Result<Self, BlpErr> {
+    pub fn from_buf(buf: &[u8]) -> Result<Self, BlpError> {
         if buf.len() >= 3 && &buf[..3] == b"BLP" {
             Self::from_buf_blp(buf)
         } else {

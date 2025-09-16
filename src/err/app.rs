@@ -1,4 +1,4 @@
-use crate::err::blp_err::BlpErr;
+use crate::err::error::BlpError;
 use crate::err::cause::Cause;
 use crate::ui::viewer::update::App;
 use fluent_templates::fluent_bundle::FluentArgs;
@@ -6,13 +6,13 @@ use std::fmt::Write;
 
 impl App {
     /// Локализованный текст ошибки (с деревом причин).
-    pub fn err_text_localized(&self, err: &BlpErr) -> String {
+    pub fn err_text_localized(&self, err: &BlpError) -> String {
         let mut out = String::new();
         self.fmt_err_loc(err, 0, &mut out);
         out
     }
 
-    fn fmt_err_loc(&self, err: &BlpErr, indent: usize, out: &mut String) {
+    fn fmt_err_loc(&self, err: &BlpError, indent: usize, out: &mut String) {
         // Собираем FluentArgs из err.args
         let mut fargs = FluentArgs::new();
         for (k, v) in &err.args {

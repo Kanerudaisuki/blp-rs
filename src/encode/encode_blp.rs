@@ -1,4 +1,4 @@
-use crate::err::blp_err::BlpErr;
+use crate::err::error::BlpError;
 use crate::image_blp::{ImageBlp, MAX_MIPS};
 use crate::mipmap::Mipmap;
 use byteorder::{BigEndian, LittleEndian, WriteBytesExt};
@@ -7,16 +7,16 @@ use mozjpeg as mj;
 use std::io::Write;
 
 impl ImageBlp {
-    pub fn encode_blp(&self, quality: u8) -> Result<Vec<u8>, BlpErr> {
+    pub fn encode_blp(&self, quality: u8) -> Result<Vec<u8>, BlpError> {
         let base: &RgbaImage = self
             .mipmaps
             .get(0)
             .and_then(|m| m.image.as_ref())
-            .ok_or_else(|| BlpErr::new("encode-blp.mip0-missing").with_arg("msg", "encode_blp: mip0 RGBA image is missing"))?;
+            .ok_or_else(|| BlpError::new("encode-blp.mip0-missing").with_arg("msg", "encode_blp: mip0 RGBA image is missing"))?;
 
         let (w0, h0) = (base.width(), base.height());
         if w0 == 0 || h0 == 0 {
-            return Err(BlpErr::new("encode-blp").with_arg("msg", "base image has zero dimension"));
+            return Err(BlpError::new("encode-blp").with_arg("msg", "base image has zero dimension"));
         }
 
         let gen_mips = build_mips_from_first(base, MAX_MIPS)?;
@@ -27,7 +27,7 @@ impl ImageBlp {
             let img = mip
                 .image
                 .as_ref()
-                .ok_or_else(|| BlpErr::new("encode-blp.mip0-missing").with_arg("msg", "encode_blp: mip image missing"))?;
+                .ok_or_else(|| BlpError::new("encode-blp.mip0-missing").with_arg("msg", "encode_blp: mip image missing"))?;
 
             jpegs.push(encode_argb_jpeg_full(img, mip.width, mip.height, quality)?);
         }
@@ -35,7 +35,7 @@ impl ImageBlp {
         // общий заголовок = общий префикс всех JPEG (без лимитов)
         let hdr_len = common_prefix_len(&jpegs);
         if hdr_len < 2 || jpegs[0][0] != 0xFF || jpegs[0][1] != 0xD8 {
-            return Err(BlpErr::new("encode-blp").with_arg("msg", "encode_blp: not a JPEG (no SOI)"));
+            return Err(BlpError::new("encode-blp").with_arg("msg", "encode_blp: not a JPEG (no SOI)"));
         }
         let common_header = jpegs[0][..hdr_len].to_vec();
 
@@ -88,14 +88,14 @@ impl ImageBlp {
 }
 
 // ----------------- helpers -----------------
-fn build_mips_from_first(base: &RgbaImage, max_levels: usize) -> Result<Vec<Mipmap>, BlpErr> {
+fn build_mips_from_first(base: &RgbaImage, max_levels: usize) -> Result<Vec<Mipmap>, BlpError> {
     if max_levels == 0 {
-        return Err(BlpErr::new("build_mips_from_first: max_levels == 0"));
+        return Err(BlpError::new("build_mips_from_first: max_levels == 0"));
     }
 
     let (mut w, mut h) = base.dimensions();
     if w == 0 || h == 0 {
-        return Err(BlpErr::new("build_mips_from_first: base has zero dimension"));
+        return Err(BlpError::new("build_mips_from_first: base has zero dimension"));
     }
 
     let mut chain: Vec<Mipmap> = Vec::with_capacity(max_levels);
@@ -122,7 +122,7 @@ fn build_mips_from_first(base: &RgbaImage, max_levels: usize) -> Result<Vec<Mipm
 
 /// Пишем в JPEG 4 компонента **в порядке BGRA** без каких-либо преобразований содержимого.
 /// (Просто сырой 4-канальный поток; сэмплинг 1×1, без optimize, чтобы префикс совпадал.)
-fn encode_argb_jpeg_full(img: &RgbaImage, w: u32, h: u32, quality: u8) -> Result<Vec<u8>, BlpErr> {
+fn encode_argb_jpeg_full(img: &RgbaImage, w: u32, h: u32, quality: u8) -> Result<Vec<u8>, BlpError> {
     // упаковываем строго A,R,G,B
     let mut argb = Vec::with_capacity((w as usize * h as usize) * 4);
     for p in img.pixels() {
