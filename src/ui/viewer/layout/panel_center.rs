@@ -50,7 +50,7 @@ impl App {
                                     let spacing = ui.spacing().item_spacing.x;
                                     let left_w = (ui.available_width() - right_w - spacing).max(0.0);
 
-                                    let noim = RichText::new(self.tr("no-image")).italics();
+                                    let noim = RichText::new(self.tr("no-image"));
 
                                     // Левый блок
                                     ui.allocate_ui_with_layout(vec2(left_w, 0.0), Layout::top_down(Align::Min), |ui| {

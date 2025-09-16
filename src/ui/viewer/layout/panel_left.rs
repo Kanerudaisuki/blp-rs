@@ -3,7 +3,7 @@ use crate::export::export_blp::export_blp;
 use crate::export::export_png::export_png;
 use crate::ui::viewer::app::App;
 use crate::ui::viewer::layout::file_saver::save_same_dir::save_same_dir_save;
-use eframe::egui::{Button, Context, CursorIcon, Frame, Margin, ScrollArea, Sense, SidePanel, vec2};
+use eframe::egui::{vec2, Button, Context, CursorIcon, Frame, Margin, ScrollArea, Sense, SidePanel};
 
 impl App {
     fn default_names(&self) -> (String, String) {

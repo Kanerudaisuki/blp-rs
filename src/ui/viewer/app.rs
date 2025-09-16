@@ -1,8 +1,8 @@
 use crate::err::error::BlpError;
 use crate::image_blp::{ImageBlp, MAX_MIPS};
+use crate::ui::fonts::install_fonts;
 use crate::ui::i18n::lng_list::LngList;
 use crate::ui::i18n::prefs::load_prefs;
-use crate::ui::viewer::fonts::install_fonts::install_fonts;
 use crate::ui::viewer::layout::file_saver::save_same_dir::save_same_dir_load;
 use eframe::egui::{Context, TextureHandle};
 use std::path::PathBuf;
