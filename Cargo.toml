@@ -26,6 +26,9 @@ sys-locale = "0.3.2"
 tempfile = "3.22.0"
 dunce = { version = "1.0.5" }
 brotli-decompressor = "5.0.0"
+sha1 = "0.11.0-rc.2"
+hex = "0.4.3"
+img-parts = "0.4.0"
 
 [[bin]]
 name = "blp_rs"
