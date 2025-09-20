@@ -3,6 +3,7 @@
 
 #[cfg(test)]
 pub mod to_blp {
+    use blp_rs::encode::blp::ctx::ctx::EncoderCtx;
     use blp_rs::encode::blp::options::EncoderOptions;
     use blp_rs::err::error::BlpError;
     use blp_rs::image_blp::{ImageBlp, MAX_MIPS};
@@ -54,17 +55,17 @@ pub mod to_blp {
         eprintln!("  parsed ImageBlp base (from PNG): {}x{}", img.mipmaps[0].width, img.mipmaps[0].height);
 
         // --- encode ---
-        let quality = 85u8;
+        let quality = 100u8;
         eprintln!("Step 3: encoding to BLP (quality={}, all mips visible)...", quality);
-        let report = match catch_unwind(AssertUnwindSafe(|| {
+        let ctx = match catch_unwind(AssertUnwindSafe(|| {
             img.encode_blp(EncoderOptions {
                 quality,
                 mip_visible: &[], // отсутствующие считаются true
             })
         })) {
-            Ok(Ok(r)) => {
-                eprintln!("== Encode Report ==\n{r}");
-                r
+            Ok(Ok(c)) => {
+                print_ctx_summary(&c);
+                c
             }
             Ok(Err(e)) => {
                 eprintln!("  ❌ encode_blp returned error:");
@@ -78,24 +79,20 @@ pub mod to_blp {
             }
         };
 
-        // --- быстрые инварианты отчёта ---
+        // --- быстрые инварианты контекста ---
         // 1) всегда MAX_MIPS юнитов
-        assert_eq!(report.mips.len(), MAX_MIPS, "report.mips must contain MAX_MIPS items");
+        assert_eq!(ctx.mips.len(), MAX_MIPS, "ctx.mips must contain MAX_MIPS items");
 
-        // 2) included мипов == report.visible_count
-        let included_cnt = report
+        // 2) included мипов == ctx.visible_count
+        let included_cnt = ctx
             .mips
             .iter()
             .filter(|m| m.included)
             .count();
-        assert_eq!(included_cnt, report.visible_count, "included mip count {} != report.visible_count {}", included_cnt, report.visible_count);
+        assert_eq!(included_cnt, ctx.visible_count, "included mip count {} != ctx.visible_count {}", included_cnt, ctx.visible_count);
 
         // 3) проверяем, что включённые мипы реально закодированы (jpeg_full_bytes > 0)
-        for m in report
-            .mips
-            .iter()
-            .filter(|m| m.included)
-        {
+        for m in ctx.mips.iter().filter(|m| m.included) {
             assert!(m.jpeg_full_bytes > 0 && !m.jpeg_full.is_empty(), "included mip{} must have non-empty jpeg_full", m.index);
             // базовая консистентность
             assert_eq!(m.jpeg_full_bytes, m.jpeg_full.len(), "mip{}: jpeg_full_bytes must equal jpeg_full.len()", m.index);
@@ -108,8 +105,8 @@ pub mod to_blp {
                 fs::create_dir_all(parent).unwrap_or_else(|e| panic!("create_dir_all {}: {e}", parent.display()));
             }
         }
-        fs::write(&b_blp, &report.bytes).unwrap_or_else(|e| panic!("Failed to write {}: {e}", b_blp.display()));
-        eprintln!("  wrote {} bytes to {}", report.bytes.len(), b_blp.display());
+        fs::write(&b_blp, &ctx.bytes).unwrap_or_else(|e| panic!("Failed to write {}: {e}", b_blp.display()));
+        eprintln!("  wrote {} bytes to {}", ctx.bytes.len(), b_blp.display());
         assert!(b_blp.exists(), "BLP was not created at {}", b_blp.display());
 
         // --- read back & parse ---
@@ -136,7 +133,7 @@ pub mod to_blp {
         // --- sanity checks ---
         eprintln!("Step 7: sanity checks...");
         let (w_dec, h_dec) = (parsed.header.width, parsed.header.height);
-        assert_eq!((w_dec, h_dec), (report.base_width, report.base_height), "decoded base size {}x{} != report base {}x{}", w_dec, h_dec, report.base_width, report.base_height);
+        assert_eq!((w_dec, h_dec), (ctx.base_width, ctx.base_height), "decoded base size {}x{} != ctx base {}x{}", w_dec, h_dec, ctx.base_width, ctx.base_height);
         eprintln!("  sanity checks OK");
 
         // --- cargo build --release ---
@@ -188,6 +185,25 @@ pub mod to_blp {
 
         eprintln!("== ✅ FINISHED to_blp_roundtrip test ==");
         Ok(())
+    }
+
+    fn print_ctx_summary(ctx: &EncoderCtx) {
+        eprintln!("== BLP encode summary ==");
+        eprintln!("bytes: {} ({:.6} KiB)", ctx.bytes.len(), ctx.bytes.len() as f64 / 1024.0);
+        eprintln!("container base: {}x{}", ctx.base_width, ctx.base_height);
+        eprintln!("has_alpha: {}", ctx.has_alpha);
+        eprintln!("visible mips: {}", ctx.visible_count);
+        eprintln!("common header length: {} bytes", ctx.common_header_len);
+
+        for m in &ctx.mips {
+            if m.included {
+                eprintln!("mip{}: {}x{} ({} bytes, {:.2} KiB), encode: {:.3} ms", m.index, m.width, m.height, m.jpeg_full_bytes, m.jpeg_full_bytes as f64 / 1024.0, m.encode_ms_acc);
+            } else {
+                eprintln!("mip{}: SKIPPED", m.index);
+            }
+        }
+
+        eprintln!("total slices bytes: {}", ctx.total_slices_bytes);
     }
 
     fn print_panic_payload(phase: &str, p: Box<dyn std::any::Any + Send>) {

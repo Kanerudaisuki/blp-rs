@@ -14,32 +14,22 @@ pub enum MipSkipReason {
 /// included/excluded mips, timing, and encoded byte size.
 #[derive(Clone, Debug)]
 pub struct MipUnit {
-    /// Index of the mip level (0 = base).
-    pub index: usize,
-    /// Width of this mip level in pixels.
+    pub index: usize,            // dst-индекс после смещения (0..MAX_MIPS-1)
+    pub src_index: Option<usize>,// исходный индекс в ImageBlp::mipmaps (None = not present)
     pub width: u32,
-    /// Height of this mip level in pixels.
     pub height: u32,
-    /// Whether this mip level is included in the container.
     pub included: bool,
-    /// The full JPEG data for this mip (SOI..EOI).
     pub jpeg_full: Vec<u8>,
-    /// Cached length of `jpeg_full` (for quick checks).
     pub jpeg_full_bytes: usize,
-    /// Accumulated encoding time in milliseconds for this mip.
     pub encode_ms_acc: f64,
-    /// Reason why this mip level was skipped, if not included.
     pub skip_reason: Option<MipSkipReason>,
 }
 
 impl MipUnit {
-    /// Creates an "empty" placeholder mip unit.
-    ///
-    /// Used to fill the fixed-length mip array up to `MAX_MIPS`.
-    /// The unit is marked as not included and has a skip reason `NotPresent`.
     pub fn empty(index: usize) -> Self {
         Self {
             index, //
+            src_index: None,
             width: 0,
             height: 0,
             included: false,
