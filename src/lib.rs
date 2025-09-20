@@ -1,16 +1,15 @@
+mod cli;
+mod decode;
+pub mod encode;
+pub mod err;
+mod export;
+mod ext;
+mod from;
 pub mod header;
 pub mod image_blp;
 pub mod mipmap;
-pub mod texture_type;
-pub mod version;
-pub mod ui;
 pub mod run;
+pub mod texture_type;
+pub mod ui;
 mod util;
-mod decode;
-mod cli;
-mod encode;
-mod export;
-mod from;
-mod err;
-mod ext;
-
+pub mod version;

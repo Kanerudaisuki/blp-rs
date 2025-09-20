@@ -1,15 +1,16 @@
+use crate::encode::blp::options::EncoderOptions;
 use crate::err::error::BlpError;
 use crate::image_blp::ImageBlp;
-use std::fs;
-use std::path::Path;
 
-pub fn export_blp(img: &ImageBlp, out_path: &Path, quality: u8) -> Result<(), BlpError> {
+pub fn export_blp(img: &ImageBlp, out_path: &std::path::Path, quality: u8) -> Result<(), BlpError> {
+    use std::fs;
     if let Some(parent) = out_path.parent() {
         if !parent.as_os_str().is_empty() {
             fs::create_dir_all(parent)?;
         }
     }
-    let bytes = img.encode_blp(quality)?;
-    fs::write(out_path, &bytes)?;
+    let report = img.encode_blp(EncoderOptions { quality, mip_visible: &[] })?;
+    println!("{report}");
+    fs::write(out_path, &report.bytes)?;
     Ok(())
 }

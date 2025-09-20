@@ -50,6 +50,12 @@ impl From<u64> for ArgVal {
     }
 }
 
+impl From<usize> for ArgVal {
+    fn from(v: usize) -> Self {
+        ArgVal::Int(v as i64)
+    }
+}
+
 // Debug вручную (dyn Display не Debug)
 impl fmt::Debug for ArgVal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

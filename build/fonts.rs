@@ -18,7 +18,7 @@ pub fn run_fonts() {
     let mut items: Vec<(String, String)> = Vec::new();
 
     if !fonts_root.exists() {
-        println!("cargo:warning=⚠️ {} не существует — шрифты не вшиты", fonts_root.display());
+        println!("⚠️ {} не существует — шрифты не вшиты", fonts_root.display());
         generate_fonts_rs(&out_dir, &items);
         return;
     }
@@ -88,7 +88,7 @@ fn compress_to_br_no_progress(src_path: &Path, out_dir: &Path, quality: u32, lgw
     if let (Ok(src_m), Ok(dst_m_opt)) = (mtime(src_path), mtime_opt(&dst)) {
         if let Some(dst_m) = dst_m_opt {
             if dst_m >= src_m {
-                println!("cargo:warning=⏭️  {} — пропуск (уже сжато)", src_path.display());
+                println!("⏭️  {} — пропуск (уже сжато)", src_path.display());
                 return Ok(out_name);
             }
         }
@@ -96,14 +96,14 @@ fn compress_to_br_no_progress(src_path: &Path, out_dir: &Path, quality: u32, lgw
 
     // Если уже существует .br (например, ты положил его вручную) — тоже пропустим
     if dst.exists() {
-        println!("cargo:warning=⏭️  {} — пропуск (найден готовый {})", src_path.display(), dst.display());
+        println!("⏭️  {} — пропуск (найден готовый {})", src_path.display(), dst.display());
         return Ok(out_name);
     }
 
     let meta = fs::metadata(src_path)?;
     let total = meta.len().max(1);
 
-    println!("cargo:warning=🗜️ Brotli q={quality}, lgwin={lgwin}: {}", src_path.display());
+    println!("🗜️ Brotli q={quality}, lgwin={lgwin}: {}", src_path.display());
     let started = Instant::now();
 
     let f_in = fs::File::open(src_path)?;
@@ -130,7 +130,7 @@ fn compress_to_br_no_progress(src_path: &Path, out_dir: &Path, quality: u32, lgw
     let ratio = out_size as f64 / total as f64;
 
     println!(
-        "cargo:warning=✅ {} → {} ({:.1} MiB → {:.1} MiB, ratio {:.2}x) за {:.2}s",
+        "✅ {} → {} ({:.1} MiB → {:.1} MiB, ratio {:.2}x) за {:.2}s",
         src_path
             .file_name()
             .unwrap()

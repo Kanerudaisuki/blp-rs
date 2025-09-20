@@ -6,7 +6,7 @@ pub fn run_icons() {
 
     let src_icon = Path::new("assets/icon.png");
     if !src_icon.exists() {
-        println!("cargo:warning=⚠️ assets/icon.png не найден — пропускаю генерацию иконок");
+        println!("⚠️ assets/icon.png не найден — пропускаю генерацию иконок");
         return;
     }
 
@@ -27,14 +27,14 @@ pub fn run_icons() {
     let mac_bases: &[u32] = &[16, 32, 64, 128, 256, 512]; // часть имеет @2x
     let lin_sizes: &[u32] = &[16, 32, 48, 64, 128, 256, 512];
 
-    println!("cargo:warning=🎨 Генерация иконок из assets/icon.png ({w}×{h})");
+    println!("🎨 Генерация иконок из assets/icon.png ({w}×{h})");
 
     generate_ico(out_dir, &img, win_sizes);
     generate_icns(out_dir, &img, mac_bases);
     generate_linux_hicolor(out_dir, &img, lin_sizes);
     // embed_windows_resources(out_dir); // опционально
 
-    println!("cargo:warning=✅ Иконки готовы за {:.2}s", started.elapsed().as_secs_f32());
+    println!("✅ Иконки готовы за {:.2}s", started.elapsed().as_secs_f32());
 }
 
 pub fn generate_ico(out_dir: &Path, img: &image::RgbaImage, sizes: &[u32]) {
@@ -44,12 +44,12 @@ pub fn generate_ico(out_dir: &Path, img: &image::RgbaImage, sizes: &[u32]) {
         let resized = image::imageops::resize(img, s, s, image::imageops::FilterType::Lanczos3);
         let ii = IconImage::from_rgba_data(s, s, resized.into_raw());
         dir.add_entry(ico::IconDirEntry::encode(&ii).expect("encode ico"));
-        println!("cargo:warning=  • ICO slice {}×{}", s, s);
+        println!("  • ICO slice {}×{}", s, s);
     }
     let mut f = fs::File::create(out_dir.join("app.ico")).expect("create app.ico");
     dir.write(&mut f)
         .expect("write app.ico");
-    println!("cargo:warning=🪟 app.ico готов");
+    println!("🪟 app.ico готов");
 }
 
 pub fn generate_icns(out_dir: &Path, img: &image::RgbaImage, bases: &[u32]) {
@@ -93,14 +93,14 @@ pub fn generate_icns(out_dir: &Path, img: &image::RgbaImage, bases: &[u32]) {
             family
                 .add_icon_with_type(&icns_img, kind)
                 .expect("add icns slice");
-            println!("cargo:warning=  • ICNS slice {:?} ({}×{})", kind, px, px);
+            println!("  • ICNS slice {:?} ({}×{})", kind, px, px);
         }
     }
     let mut f = fs::File::create(out_dir.join("AppIcon.icns")).expect("create AppIcon.icns");
     family
         .write(&mut f)
         .expect("write icns");
-    println!("cargo:warning=🍎 AppIcon.icns готов");
+    println!("🍎 AppIcon.icns готов");
 }
 
 pub fn generate_linux_hicolor(out_dir: &Path, img: &image::RgbaImage, sizes: &[u32]) {
@@ -116,7 +116,7 @@ pub fn generate_linux_hicolor(out_dir: &Path, img: &image::RgbaImage, sizes: &[u
             .expect("encode linux png");
         f.write_all(&buf)
             .expect("write linux png");
-        println!("cargo:warning=🐧 hicolor {s}×{s} → {}", path.display());
+        println!("🐧 hicolor {s}×{s} → {}", path.display());
     }
 }
 
