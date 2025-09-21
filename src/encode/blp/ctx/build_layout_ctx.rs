@@ -1,5 +1,3 @@
-// src/encode/blp/ctx/layout.rs (или рядом)
-
 use crate::encode::blp::ctx::ctx::EncoderCtx;
 use crate::encode::blp::options::EncoderOptions;
 use crate::encode::blp::unit::unit::{MipSkipReason, MipUnit};

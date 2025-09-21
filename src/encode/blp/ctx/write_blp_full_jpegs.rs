@@ -97,7 +97,7 @@ impl EncoderCtx {
                         .as_ref()
                         .map(|s| if m.included { s.scan_len } else { 0 })
                 })
-                .map(|v| v as usize)
+                .map(|v| v)
                 .sum()
         } else {
             self.mips

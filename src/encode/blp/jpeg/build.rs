@@ -87,7 +87,7 @@ pub fn build_common_header(plan: &JpegPlan) -> Result<Vec<u8>, BlpError> {
 
     // DRI (если есть)
     if let Some(n) = plan.dri.interval {
-        let payload = (n as u16).to_be_bytes();
+        let payload = n.to_be_bytes();
         push_segment(&mut out, 0xDD, &payload)?;
     }
 

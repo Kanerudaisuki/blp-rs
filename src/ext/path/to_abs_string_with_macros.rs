@@ -1,6 +1,9 @@
 use normpath::PathExt as _;
 use path_absolutize::Absolutize as _;
-use std::{env, path::{Path, PathBuf}};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
 pub trait PathMacrosExt {
     /// Абсолютный, нормализованный путь, свернутый в ~ (unix) или %VAR% (windows).

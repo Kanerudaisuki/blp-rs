@@ -1,19 +1,59 @@
 // build/icons.rs
-use std::{fs, io::Write, path::Path, time::Instant};
+use std::{
+    fs,
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 pub fn run_icons() {
     println!("cargo:rerun-if-changed=assets/icon.png");
 
     let src_icon = Path::new("assets/icon.png");
     if !src_icon.exists() {
-        println!("⚠️ assets/icon.png не найден — пропускаю генерацию иконок");
         return;
     }
 
     let out_dir = Path::new("assets/generated");
-    fs::create_dir_all(out_dir).expect("mkdir assets/generated");
 
-    let started = Instant::now();
+    // Наборы размеров — как у тебя
+    let win_sizes: &[u32] = &[16, 24, 32, 48, 64, 128, 256];
+    let mac_bases: &[u32] = &[16, 32, 64, 128, 256, 512]; // часть имеет @2x
+    let lin_sizes: &[u32] = &[16, 32, 48, 64, 128, 256, 512];
+
+    let mut expected_outputs: Vec<PathBuf> = vec![out_dir.join("app.ico"), out_dir.join("AppIcon.icns")];
+    expected_outputs.extend(
+        lin_sizes
+            .iter()
+            .map(|s| out_dir.join(format!("icons/hicolor/{}x{}/apps/blp-rs.png", s, s))),
+    );
+
+    let src_modified = fs::metadata(src_icon)
+        .and_then(|meta| meta.modified())
+        .ok();
+
+    let mut needs_generation = src_modified.is_none();
+    for path in expected_outputs.iter() {
+        if !path.exists() {
+            needs_generation = true;
+            break;
+        }
+        if let Some(src_modified) = src_modified {
+            let up_to_date = fs::metadata(path)
+                .and_then(|meta| meta.modified())
+                .map(|modified| modified >= src_modified)
+                .unwrap_or(false);
+            if !up_to_date {
+                needs_generation = true;
+                break;
+            }
+        }
+    }
+
+    if !needs_generation {
+        return;
+    }
+
+    fs::create_dir_all(out_dir).expect("mkdir assets/generated");
 
     // Загружаем исходный PNG
     let img = image::load_from_memory(&fs::read(src_icon).expect("read icon.png"))
@@ -22,19 +62,10 @@ pub fn run_icons() {
     let (w, h) = (img.width(), img.height());
     assert_eq!(w, h, "icon.png должен быть квадратным (512×512 или 1024×1024)");
 
-    // Наборы размеров — как у тебя
-    let win_sizes: &[u32] = &[16, 24, 32, 48, 64, 128, 256];
-    let mac_bases: &[u32] = &[16, 32, 64, 128, 256, 512]; // часть имеет @2x
-    let lin_sizes: &[u32] = &[16, 32, 48, 64, 128, 256, 512];
-
-    println!("🎨 Генерация иконок из assets/icon.png ({w}×{h})");
-
     generate_ico(out_dir, &img, win_sizes);
     generate_icns(out_dir, &img, mac_bases);
     generate_linux_hicolor(out_dir, &img, lin_sizes);
     // embed_windows_resources(out_dir); // опционально
-
-    println!("✅ Иконки готовы за {:.2}s", started.elapsed().as_secs_f32());
 }
 
 pub fn generate_ico(out_dir: &Path, img: &image::RgbaImage, sizes: &[u32]) {
@@ -44,12 +75,10 @@ pub fn generate_ico(out_dir: &Path, img: &image::RgbaImage, sizes: &[u32]) {
         let resized = image::imageops::resize(img, s, s, image::imageops::FilterType::Lanczos3);
         let ii = IconImage::from_rgba_data(s, s, resized.into_raw());
         dir.add_entry(ico::IconDirEntry::encode(&ii).expect("encode ico"));
-        println!("  • ICO slice {}×{}", s, s);
     }
     let mut f = fs::File::create(out_dir.join("app.ico")).expect("create app.ico");
     dir.write(&mut f)
         .expect("write app.ico");
-    println!("🪟 app.ico готов");
 }
 
 pub fn generate_icns(out_dir: &Path, img: &image::RgbaImage, bases: &[u32]) {
@@ -93,14 +122,12 @@ pub fn generate_icns(out_dir: &Path, img: &image::RgbaImage, bases: &[u32]) {
             family
                 .add_icon_with_type(&icns_img, kind)
                 .expect("add icns slice");
-            println!("  • ICNS slice {:?} ({}×{})", kind, px, px);
         }
     }
     let mut f = fs::File::create(out_dir.join("AppIcon.icns")).expect("create AppIcon.icns");
     family
         .write(&mut f)
         .expect("write icns");
-    println!("🍎 AppIcon.icns готов");
 }
 
 pub fn generate_linux_hicolor(out_dir: &Path, img: &image::RgbaImage, sizes: &[u32]) {
@@ -116,7 +143,6 @@ pub fn generate_linux_hicolor(out_dir: &Path, img: &image::RgbaImage, sizes: &[u
             .expect("encode linux png");
         f.write_all(&buf)
             .expect("write linux png");
-        println!("🐧 hicolor {s}×{s} → {}", path.display());
     }
 }
 
