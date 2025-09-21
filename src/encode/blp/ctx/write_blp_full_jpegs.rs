@@ -1,47 +1,48 @@
+// src/encode/blp/ctx/write.rs  (или где у тебя метод контекста)
 use crate::encode::blp::ctx::ctx::EncoderCtx;
+use byteorder::{BigEndian, LittleEndian, WriteBytesExt};
+// Common header holds full JPEG header up to and including SOS (from mip0).
+// Each mip slice holds only entropy scan (+ EOI).
 use crate::err::error::BlpError;
 use crate::image_blp::MAX_MIPS;
-use byteorder::{BigEndian, LittleEndian, WriteBytesExt};
 
 impl EncoderCtx {
-    /// Пишет простой BLP1 контейнер в `self.bytes` из `self.mips`.
-    /// Кладём ПОЛНЫЕ JPEG, общий заголовок пока не выносим.
-    pub fn write_blp_full_jpegs(&mut self) -> Result<(), BlpError> {
+    /// Пишет BLP1: общий JPEG-хедер (`self.common_header`) + массивы чистых scan-слайсов.
+    pub fn write_blp_common_header_and_slices(&mut self) -> Result<(), BlpError> {
         if self.mips.len() != MAX_MIPS {
             return Err(BlpError::new("encode_blp_mips_len"));
         }
+        // allow empty common header (header_len = 0) when storing full JPEG per mip
 
         let mut out = Vec::<u8>::new();
 
-        // --- BLP1 header ---
-        out.write_u32::<BigEndian>(0x424C5031)?; // "BLP1"
-        out.write_u32::<LittleEndian>(0)?; // compression = JPEG
-
-        // alpha_depth: 0 если нет альфы, 8 если есть (альфа в K-канале)
-        let alpha_depth: u32 = if self.has_alpha { 8 } else { 0 };
-        out.write_u32::<LittleEndian>(alpha_depth)?;
-
+        // --- BLP1 header (156 bytes total) ---
+        // Layout must match src/header.rs::Header::parse for BLP1
+        out.write_u32::<BigEndian>(0x424C5031)?; // version = "BLP1"
+        out.write_u32::<LittleEndian>(0)?; // texture_type = JPEG (0)
+        out.write_u32::<LittleEndian>(self.alpha_depth as u32)?; // alpha_bits (0 or 8)
         out.write_u32::<LittleEndian>(self.base_width)?; // width
         out.write_u32::<LittleEndian>(self.base_height)?; // height
-        out.write_u32::<LittleEndian>(5)?; // historical / palette type
+        out.write_u32::<LittleEndian>(0)?; // extra (BLP1 legacy)
+        out.write_u32::<LittleEndian>(0)?; // has_mipmaps (BLP1 legacy)
 
-        // hasCommonHeader: 1 если есть общий заголовок, иначе 0
-        let has_common_header: u32 = if self.common_header_len > 0 { 1 } else { 0 };
-        out.write_u32::<LittleEndian>(has_common_header)?;
-
-        // Резерв под таблицы offsets и sizes (по MAX_MIPS u32 каждая)
+        // mip offsets + mip sizes (reserved, patch later)
         let offsets_pos = out.len();
         for _ in 0..(MAX_MIPS * 2) {
             out.write_u32::<LittleEndian>(0)?;
         }
 
-        // Длина общего заголовка (кладём значение из контекста)
+        // common header len + bytes (must be non-zero for header+scan scheme)
         out.write_u32::<LittleEndian>(self.common_header_len as u32)?;
-        // Примечание: сами байты общего заголовка не пишем (на текущей фазе len=0).
+        out.extend_from_slice(&self.common_header);
 
-        // --- Payload: полные JPEG по включённым мипам ---
+        let plan_opt = self.jpeg_plan.as_ref();
+
+        // --- payload: только SCAN каждого включённого мипа ---
         let mut mm_offsets = [0u32; MAX_MIPS];
         let mut mm_sizes = [0u32; MAX_MIPS];
+
+        // Для каждого мипа кладём только entropy-скан (+ EOI)
 
         for (i, mu) in self
             .mips
@@ -49,14 +50,36 @@ impl EncoderCtx {
             .enumerate()
             .take(MAX_MIPS)
         {
-            if mu.included && mu.jpeg_full_bytes > 0 {
-                mm_offsets[i] = out.len() as u32;
-                out.extend_from_slice(&mu.jpeg_full);
-                mm_sizes[i] = mu.jpeg_full_bytes as u32;
+            if !mu.included {
+                continue;
+            }
+            let Some(slc) = mu.jpeg_slices else {
+                return Err(BlpError::new("encode_blp_missing_slices").with_arg("mip", i as u32));
+            };
+            let start = slc.head_len;
+            let end = slc.head_len + slc.scan_len;
+            if end > mu.jpeg_full_bytes {
+                return Err(BlpError::new("encode_blp_slice_oob")
+                    .with_arg("mip", i as u32)
+                    .with_arg("head_len", slc.head_len as u32)
+                    .with_arg("scan_len", slc.scan_len as u32)
+                    .with_arg("jpeg_full_bytes", mu.jpeg_full_bytes as u32));
+            }
+            mm_offsets[i] = out.len() as u32;
+            if let Some(plan) = plan_opt {
+                let sof0_sos = crate::encode::blp::jpeg::build::build_sof0_sos(plan, mu.width as u16, mu.height as u16)?;
+                out.extend_from_slice(&sof0_sos);
+                out.extend_from_slice(&mu.jpeg_full[start..end]);
+                out.extend_from_slice(&[0xFF, 0xD9]);
+                mm_sizes[i] = (sof0_sos.len() as u32) + (slc.scan_len as u32) + 2;
+            } else {
+                out.extend_from_slice(&mu.jpeg_full[start..end]);
+                out.extend_from_slice(&[0xFF, 0xD9]);
+                mm_sizes[i] = (slc.scan_len as u32) + 2;
             }
         }
 
-        // --- Патчим таблицы offsets/sizes ---
+        // патчим таблицы
         {
             let mut cur = std::io::Cursor::new(&mut out[offsets_pos..]);
             for off in mm_offsets {
@@ -67,15 +90,26 @@ impl EncoderCtx {
             }
         }
 
-        // Итоги в контекст
-        self.total_slices_bytes = self
-            .mips
-            .iter()
-            .filter(|m| m.included)
-            .map(|m| m.jpeg_full_bytes)
-            .sum();
-        self.bytes = out;
+        // итоги
+        self.total_slices_bytes = if plan_opt.is_some() {
+            self.mips
+                .iter()
+                .filter_map(|m| {
+                    m.jpeg_slices
+                        .as_ref()
+                        .map(|s| if m.included { s.scan_len } else { 0 })
+                })
+                .map(|v| v as usize)
+                .sum()
+        } else {
+            self.mips
+                .iter()
+                .filter(|m| m.included)
+                .map(|m| m.jpeg_full_bytes)
+                .sum()
+        };
 
+        self.bytes = out;
         Ok(())
     }
 }

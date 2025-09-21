@@ -1,26 +1,29 @@
-/// Reason why a mip level was skipped during encoding.
+// src/encode/blp/unit/unit.rs
+use crate::encode::blp::jpeg::types::JpegSlices;
+
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub enum MipSkipReason {
-    /// The user explicitly disabled this mip level (via options).
     UserDisabled,
-    /// The mip level is not present (image too small or not generated).
     NotPresent,
 }
 
-/// Represents a single mip level unit during encoding.
-///
-/// Each `MipUnit` stores metadata and the full encoded JPEG data for one
-/// mip level. This is a working structure used by the encoder to track
-/// included/excluded mips, timing, and encoded byte size.
+/// One encoded mip + bookkeeping.
 #[derive(Clone, Debug)]
 pub struct MipUnit {
-    pub index: usize,            // dst-индекс после смещения (0..MAX_MIPS-1)
-    pub src_index: Option<usize>,// исходный индекс в ImageBlp::mipmaps (None = not present)
+    pub index: usize,             // dst index after shift
+    pub src_index: Option<usize>, // source index in ImageBlp::mipmaps
     pub width: u32,
     pub height: u32,
     pub included: bool,
+
+    /// Full JPEG bytes (SOI..EOI) — мы их кодируем mozjpeg'ом.
     pub jpeg_full: Vec<u8>,
     pub jpeg_full_bytes: usize,
+
+    /// Срезы: где заканчивается head (включая SOS) и сколько длится scan.
+    /// Нужны, чтобы в контейнер писать только scan.
+    pub jpeg_slices: Option<JpegSlices>,
+
     pub encode_ms_acc: f64,
     pub skip_reason: Option<MipSkipReason>,
 }
@@ -35,6 +38,7 @@ impl MipUnit {
             included: false,
             jpeg_full: Vec::new(),
             jpeg_full_bytes: 0,
+            jpeg_slices: None,
             encode_ms_acc: 0.0,
             skip_reason: Some(MipSkipReason::NotPresent),
         }

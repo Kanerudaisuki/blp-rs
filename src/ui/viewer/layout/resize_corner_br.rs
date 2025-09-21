@@ -1,5 +1,5 @@
 use eframe::egui::viewport::{ResizeDirection, ViewportCommand};
-use eframe::egui::{Color32, Context, CursorIcon, Id, Order, Rect, Sense, Stroke, pos2, vec2, Area};
+use eframe::egui::{Area, Color32, Context, CursorIcon, Id, Order, Rect, Sense, Stroke, pos2, vec2};
 
 /// Нижний-правый уголок, который запускает нативный ресайз по ЛКМ.
 #[allow(dead_code)]

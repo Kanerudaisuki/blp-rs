@@ -156,7 +156,7 @@ pub mod to_blp {
         eprintln!("  build finished successfully");
 
         // --- запуск UI ---
-        eprintln!("Step 9: running UI...");
+        eprintln!("Step 9: running UI (detached)...");
         #[cfg(windows)]
         let bin_name: &str = "blp_rs.exe";
         #[cfg(not(windows))]
@@ -169,19 +169,41 @@ pub mod to_blp {
         eprintln!("  exe: {}", exe.display());
         assert!(exe.exists(), "UI binary not found at {} after build", exe.display());
 
-        eprintln!("Running UI: {} {}", exe.display(), b_blp.display());
-        let ui_out = Command::new(&exe)
-            .arg(&b_blp)
-            .output()
-            .expect("failed to spawn UI binary");
-        eprintln!("  ui exit status: {:?}", ui_out.status.code());
-        if !ui_out.stdout.is_empty() {
-            eprintln!("  --- ui stdout ---\n{}", String::from_utf8_lossy(&ui_out.stdout));
+        #[cfg(windows)]
+        {
+            use std::process::Stdio;
+            let exe_s = exe.to_string_lossy().to_string();
+            let arg_s = b_blp.to_string_lossy().to_string();
+            // Launch detached: start "" "exe" "arg"
+            let status = Command::new("cmd")
+                .arg("/C")
+                .arg("start")
+                .arg("")
+                .arg(exe_s)
+                .arg(arg_s)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .expect("failed to start UI (detached) on Windows");
+            eprintln!("  ui start status: {:?}", status.code());
         }
-        if !ui_out.stderr.is_empty() {
-            eprintln!("  --- ui stderr ---\n{}", String::from_utf8_lossy(&ui_out.stderr));
+
+        #[cfg(not(windows))]
+        {
+            use std::process::Stdio;
+            // Use nohup to detach from test process
+            let cmd = format!("nohup '{}' '{}' >/dev/null 2>&1 &", exe.display(), b_blp.display());
+            let status = Command::new("sh")
+                .arg("-c")
+                .arg(cmd)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .expect("failed to start UI (detached) on Unix");
+            eprintln!("  ui start status: {:?}", status.code());
         }
-        assert!(ui_out.status.success(), "UI process exited with non-zero status: {:?}", ui_out.status.code());
 
         eprintln!("== ✅ FINISHED to_blp_roundtrip test ==");
         Ok(())

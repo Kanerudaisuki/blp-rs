@@ -1,3 +1,3 @@
-mod decode_jpeg;
 mod decode_direct;
+mod decode_jpeg;
 pub mod input;

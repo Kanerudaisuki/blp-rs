@@ -13,9 +13,14 @@ impl ImageBlp {
         let mut jpeg_header_chunk = vec![0u8; jpeg_header_size];
         cursor.read_exact(&mut jpeg_header_chunk)?;
 
-        for (_, slice_opt) in slices.into_iter().enumerate() {
+        for (idx, slice_opt) in slices.into_iter().enumerate() {
             if let Some(slice) = slice_opt {
-                let mipmap = Mipmap::decode_jpeg_inner(header, &jpeg_header_chunk, slice)?;
+                let mipmap = Mipmap::decode_jpeg_inner(header, &jpeg_header_chunk, slice).map_err(|e| {
+                    e.ctx("decode.jpeg.mip")
+                        .with_arg("mip", idx as u32)
+                        .with_arg("header_len", jpeg_header_chunk.len() as u32)
+                        .with_arg("slice_len", slice.len() as u32)
+                })?;
 
                 // тот же подбор уровня
                 let mut level = 0;
@@ -48,14 +53,17 @@ impl Mipmap {
         full.extend_from_slice(jpeg_chunk);
 
         let mut dec = Decoder::new(Cursor::new(&full));
-        dec.read_info()?;
+        dec.read_info()
+            .map_err(|e| BlpError::from(e).with_arg("phase", "read_info"))?;
         let info = dec
             .info()
             .ok_or_else(|| BlpError::new("jpeg-metadata-missing").with_arg("msg", "No JPEG metadata after read_info"))?;
 
         let (w, h) = (info.width as u32, info.height as u32);
 
-        let pixels = dec.decode()?;
+        let pixels = dec
+            .decode()
+            .map_err(|e| BlpError::from(e).with_arg("phase", "decode"))?;
         let mut img = RgbaImage::new(w, h);
 
         let force_opaque = header.alpha_bits == 0;

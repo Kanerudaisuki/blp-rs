@@ -1,5 +1,5 @@
-pub mod error;
-pub mod args;
 mod app;
-mod macros;
+pub mod args;
 mod cause;
+pub mod error;
+mod macros;

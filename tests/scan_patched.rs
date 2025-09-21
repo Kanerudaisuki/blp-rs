@@ -111,14 +111,7 @@ pub mod mod_scan_patched {
             return Ok(None);
         }
         let header = data[off..off + jpeg_header_size].to_vec();
-        Ok(Some(Blp1Jpeg {
-            width_base: width,
-            height_base: height,
-            header,
-            mip_offsets,
-            mip_sizes,
-            data,
-        }))
+        Ok(Some(Blp1Jpeg { width_base: width, height_base: height, header, mip_offsets, mip_sizes, data }))
     }
 
     // Compute expected mip WxH by level (stop at 1)
@@ -167,33 +160,37 @@ pub mod mod_scan_patched {
 
             match marker {
                 0xD8 => { /* SOI again (unlikely) */ }
-                0xD9 => { return None; } // EOI in header — weird
+                0xD9 => {
+                    return None;
+                } // EOI in header — weird
                 0xDA => {
                     // SOS
-                    if i + 2 > buf.len() { return None; }
+                    if i + 2 > buf.len() {
+                        return None;
+                    }
                     let ls = u16::from_be_bytes([buf[i], buf[i + 1]]) as usize;
                     i += 2;
-                    if i + (ls - 2) > buf.len() { return None; }
+                    if i + (ls - 2) > buf.len() {
+                        return None;
+                    }
                     i += ls - 2;
                     let header_end = i; // first entropy byte
-                    return Some(JpegHeaderInfo {
-                        header_end,
-                        sof_pos: sof_pos.unwrap_or(0),
-                        sof_marker,
-                        sof_h_off,
-                        sof_w_off,
-                        sof_h,
-                        sof_w,
-                    });
+                    return Some(JpegHeaderInfo { header_end, sof_pos: sof_pos.unwrap_or(0), sof_marker, sof_h_off, sof_w_off, sof_h, sof_w });
                 }
                 0xC0 | 0xC2 => {
                     // SOF0 / SOF2
-                    if i + 2 > buf.len() { return None; }
+                    if i + 2 > buf.len() {
+                        return None;
+                    }
                     let lh = u16::from_be_bytes([buf[i], buf[i + 1]]) as usize;
                     let seg_start = i - 2; // includes 0xFF 0xC0 and length
                     i += 2;
-                    if i + (lh - 2) > buf.len() { return None; }
-                    if lh < 8 { return None; }
+                    if i + (lh - 2) > buf.len() {
+                        return None;
+                    }
+                    if lh < 8 {
+                        return None;
+                    }
 
                     let _p = buf[i]; // precision (expect 8)
                     let yh = buf[i + 1];
@@ -217,10 +214,14 @@ pub mod mod_scan_patched {
                 }
                 _ => {
                     // Generic segment with length
-                    if i + 2 > buf.len() { return None; }
+                    if i + 2 > buf.len() {
+                        return None;
+                    }
                     let l = u16::from_be_bytes([buf[i], buf[i + 1]]) as usize;
                     i += 2;
-                    if i + (l - 2) > buf.len() { return None; }
+                    if i + (l - 2) > buf.len() {
+                        return None;
+                    }
                     i += l - 2;
                 }
             }
@@ -260,12 +261,20 @@ pub mod mod_scan_patched {
         let mut rows: Vec<MipRow> = Vec::new();
         let mut file_summaries: Vec<FileSummary> = Vec::new();
 
-        for entry in WalkDir::new(input_root).into_iter().filter_map(Result::ok) {
+        for entry in WalkDir::new(input_root)
+            .into_iter()
+            .filter_map(Result::ok)
+        {
             let path = entry.path();
             if !path.is_file() {
                 continue;
             }
-            if path.extension().and_then(OsStr::to_str).map(|e| e.eq_ignore_ascii_case("blp")) != Some(true) {
+            if path
+                .extension()
+                .and_then(OsStr::to_str)
+                .map(|e| e.eq_ignore_ascii_case("blp"))
+                != Some(true)
+            {
                 continue;
             }
 
@@ -362,21 +371,13 @@ pub mod mod_scan_patched {
             }
 
             // collect per-mip rows
-            for (i, (hdr, info)) in headers.iter().zip(infos.iter()).enumerate() {
+            for (i, (hdr, info)) in headers
+                .iter()
+                .zip(infos.iter())
+                .enumerate()
+            {
                 let (mw, mh) = mip_dims_vec[i];
-                let row = MipRow {
-                    file: path.to_path_buf(),
-                    idx: i,
-                    blp_w: mw,
-                    blp_h: mh,
-                    sof_w: Some(info.sof_w),
-                    sof_h: Some(info.sof_h),
-                    header_len: hdr.len(),
-                    header_sha1: sha1_hex(hdr),
-                    lcp_to_mip0: lcps[i],
-                    header_eq_mip0: hdr == ref_header,
-                    header_eq_mip0_except_hw: header_eq_except_hw(hdr, ref_header, info, ref_info),
-                };
+                let row = MipRow { file: path.to_path_buf(), idx: i, blp_w: mw, blp_h: mh, sof_w: Some(info.sof_w), sof_h: Some(info.sof_h), header_len: hdr.len(), header_sha1: sha1_hex(hdr), lcp_to_mip0: lcps[i], header_eq_mip0: hdr == ref_header, header_eq_mip0_except_hw: header_eq_except_hw(hdr, ref_header, info, ref_info) };
                 rows.push(row);
             }
 
@@ -390,11 +391,7 @@ pub mod mod_scan_patched {
             }
             let lcp_min = *lcps.iter().min().unwrap_or(&0);
             let lcp_max = *lcps.iter().max().unwrap_or(&0);
-            let lcp_avg = if !lcps.is_empty() {
-                (lcps.iter().sum::<usize>() as f64) / (lcps.len() as f64)
-            } else {
-                0.0
-            };
+            let lcp_avg = if !lcps.is_empty() { (lcps.iter().sum::<usize>() as f64) / (lcps.len() as f64) } else { 0.0 };
 
             file_summaries.push(FileSummary {
                 file: path.to_path_buf(),
@@ -448,26 +445,20 @@ pub mod mod_scan_patched {
         let mut out = String::new();
         out.push_str("file,mip,blp_w,blp_h,sof_w,sof_h,header_len,header_sha1,lcp_to_mip0,header_eq_mip0,header_eq_mip0_except_hw\n");
         for r in rows {
-            let sof_w = r.sof_w.map(|v| v.to_string()).unwrap_or_default();
-            let sof_h = r.sof_h.map(|v| v.to_string()).unwrap_or_default();
+            let sof_w = r
+                .sof_w
+                .map(|v| v.to_string())
+                .unwrap_or_default();
+            let sof_h = r
+                .sof_h
+                .map(|v| v.to_string())
+                .unwrap_or_default();
             // quote file path because it may contain commas
             out.push('"');
             out.push_str(&r.file.to_string_lossy());
             out.push('"');
             out.push(',');
-            out.push_str(&format!(
-                "{},{},{},{},{},{},\"{}\",{},{},{}\n",
-                r.idx,
-                r.blp_w,
-                r.blp_h,
-                sof_w,
-                sof_h,
-                r.header_len,
-                r.header_sha1,
-                r.lcp_to_mip0,
-                r.header_eq_mip0 as u8,
-                r.header_eq_mip0_except_hw as u8
-            ));
+            out.push_str(&format!("{},{},{},{},{},{},\"{}\",{},{},{}\n", r.idx, r.blp_w, r.blp_h, sof_w, sof_h, r.header_len, r.header_sha1, r.lcp_to_mip0, r.header_eq_mip0 as u8, r.header_eq_mip0_except_hw as u8));
         }
         fs::write(path, out)
     }
@@ -483,11 +474,9 @@ pub mod mod_scan_patched {
     #[test]
     fn scan_patched() {
         // возьми папку с распакованными BLP из env, иначе — дефолт из твоего примера
-        let input = std::env::var("BLP_SCAN_DIR")
-            .unwrap_or_else(|_| "/Users/nazarpunk/IdeaProjects/War3.mpq/extract".to_string());
+        let input = std::env::var("BLP_SCAN_DIR").unwrap_or_else(|_| "/Users/nazarpunk/IdeaProjects/War3.mpq/extract".to_string());
         // куда положить csv (можно также управлять через env)
-        let out_csv = std::env::var("BLP_SCAN_OUT")
-            .unwrap_or_else(|_| "test-data/scan_patched.csv".to_string());
+        let out_csv = std::env::var("BLP_SCAN_OUT").unwrap_or_else(|_| "test-data/scan_patched.csv".to_string());
 
         // создадим папку назначения, если её нет
         if let Some(parent) = Path::new(&out_csv).parent() {

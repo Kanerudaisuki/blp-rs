@@ -1,5 +1,5 @@
-use crate::err::error::BlpError;
 use crate::err::cause::Cause;
+use crate::err::error::BlpError;
 use crate::ui::viewer::update::App;
 use fluent_templates::fluent_bundle::FluentArgs;
 use std::fmt::Write;
