@@ -1,5 +1,5 @@
 pub mod ctx;
 pub mod encoder;
-mod jpeg;
+pub(crate) mod jpeg;
 pub mod options;
 mod unit;

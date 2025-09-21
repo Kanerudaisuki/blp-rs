@@ -60,6 +60,14 @@ pub fn build_common_header(plan: &JpegPlan) -> Result<Vec<u8>, BlpError> {
     for seg in &plan.app_segments {
         push_segment(&mut out, seg.marker, &seg.payload)?;
     }
+    if !plan
+        .app_segments
+        .iter()
+        .any(|s| s.marker == BLP_PLAN_APP_MARKER)
+    {
+        let payload = encode_plan_app_payload(&plan.sof0, &plan.sos);
+        push_segment(&mut out, BLP_PLAN_APP_MARKER, &payload)?;
+    }
 
     // DQT — отдельно по таблице, детерминированно по id
     let mut dqts = plan.dqt.clone();
@@ -88,8 +96,11 @@ pub fn build_common_header(plan: &JpegPlan) -> Result<Vec<u8>, BlpError> {
 
 /// Build per-mip SOF0 (with width/height) + SOS from templates.
 pub fn build_sof0_sos(plan: &JpegPlan, width: u16, height: u16) -> Result<Vec<u8>, BlpError> {
-    // Санити + размеры не ноль
     plan.sanity()?;
+    build_sof0_sos_from_templates(&plan.sof0, &plan.sos, width, height)
+}
+
+pub fn build_sof0_sos_from_templates(sof0: &Sof0Template, sos: &SosTemplate, width: u16, height: u16) -> Result<Vec<u8>, BlpError> {
     if width == 0 || height == 0 {
         return Err(BlpError::new("jpeg_zero_dim"));
     }
@@ -98,14 +109,14 @@ pub fn build_sof0_sos(plan: &JpegPlan, width: u16, height: u16) -> Result<Vec<u8
 
     // SOF0 (baseline)
     {
-        let nf = plan.sof0.comps.len() as u8;
+        let nf = sof0.comps.len() as u8;
         // 8 байт заголовка + 3 байта на компонент
         let mut payload = Vec::with_capacity(8 + 3 * (nf as usize));
-        payload.push(plan.sof0.precision);
+        payload.push(sof0.precision);
         payload.extend_from_slice(&height.to_be_bytes());
         payload.extend_from_slice(&width.to_be_bytes());
         payload.push(nf);
-        for c in &plan.sof0.comps {
+        for c in &sof0.comps {
             payload.push(c.id);
             payload.push((c.h << 4) | (c.v & 0x0F));
             payload.push(c.tq);
@@ -115,16 +126,16 @@ pub fn build_sof0_sos(plan: &JpegPlan, width: u16, height: u16) -> Result<Vec<u8
 
     // SOS (baseline, single scan)
     {
-        let ns = plan.sos.comps.len() as u8;
+        let ns = sos.comps.len() as u8;
         let mut payload = Vec::with_capacity(6 + 2 * (ns as usize));
         payload.push(ns);
-        for c in &plan.sos.comps {
+        for c in &sos.comps {
             payload.push(c.id);
             payload.push(((c.td & 0x0F) << 4) | (c.ta & 0x0F));
         }
-        payload.push(plan.sos.ss);
-        payload.push(plan.sos.se);
-        payload.push(((plan.sos.ah & 0x0F) << 4) | (plan.sos.al & 0x0F));
+        payload.push(sos.ss);
+        payload.push(sos.se);
+        payload.push(((sos.ah & 0x0F) << 4) | (sos.al & 0x0F));
         push_segment(&mut out, 0xDA, &payload)?;
     }
 

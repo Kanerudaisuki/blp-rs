@@ -45,7 +45,29 @@ impl ImageBlp {
         }
 
         // Общий план: если JPEG baseline, строим компактный заголовок; иначе возьмём header mip0 до SOS
-        let plan_opt = extract_plan(&ctx.mips[first_idx].jpeg_full).ok();
+        let mut plan_opt = extract_plan(&ctx.mips[first_idx].jpeg_full).ok();
+        if let Some(ref base_plan) = plan_opt {
+            for (i, mu) in ctx
+                .mips
+                .iter()
+                .enumerate()
+                .filter(|(_, m)| m.included)
+            {
+                let other = match extract_plan(&mu.jpeg_full) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        eprintln!("[jpeg] mip{i} plan extract failed: {e}");
+                        plan_opt = None;
+                        break;
+                    }
+                };
+                if let Err(e) = base_plan.check_compatible_with(&other) {
+                    eprintln!("[jpeg] mip{i} plan mismatch: {e:?}");
+                    plan_opt = None;
+                    break;
+                }
+            }
+        }
         ctx.jpeg_plan = plan_opt.clone();
 
         let common = if let Some(plan) = &ctx.jpeg_plan {

@@ -217,9 +217,17 @@ pub mod to_blp {
         eprintln!("visible mips: {}", ctx.visible_count);
         eprintln!("common header length: {} bytes", ctx.common_header_len);
 
+        let shared_plan = ctx.jpeg_plan.is_some();
         for m in &ctx.mips {
             if m.included {
-                eprintln!("mip{}: {}x{} ({} bytes, {:.2} KiB), encode: {:.3} ms", m.index, m.width, m.height, m.jpeg_full_bytes, m.jpeg_full_bytes as f64 / 1024.0, m.encode_ms_acc);
+                let stored = if shared_plan {
+                    m.jpeg_slices
+                        .map(|s| s.scan_len)
+                        .unwrap_or(m.jpeg_full_bytes)
+                } else {
+                    m.jpeg_full_bytes
+                };
+                eprintln!("mip{}: {}x{} full {} bytes ({:.2} KiB), stored {} bytes, encode: {:.3} ms", m.index, m.width, m.height, m.jpeg_full_bytes, m.jpeg_full_bytes as f64 / 1024.0, stored, m.encode_ms_acc);
             } else {
                 eprintln!("mip{}: SKIPPED", m.index);
             }

@@ -2,7 +2,8 @@
 use crate::encode::blp::ctx::ctx::EncoderCtx;
 use byteorder::{BigEndian, LittleEndian, WriteBytesExt};
 // Common header holds full JPEG header up to and including SOS (from mip0).
-// Each mip slice holds only entropy scan (+ EOI).
+// Each mip slice holds only the entropy scan; legacy path appends EOI when we
+// cannot share a plan across mips.
 use crate::err::error::BlpError;
 use crate::image_blp::MAX_MIPS;
 
@@ -66,12 +67,9 @@ impl EncoderCtx {
                     .with_arg("jpeg_full_bytes", mu.jpeg_full_bytes as u32));
             }
             mm_offsets[i] = out.len() as u32;
-            if let Some(plan) = plan_opt {
-                let sof0_sos = crate::encode::blp::jpeg::build::build_sof0_sos(plan, mu.width as u16, mu.height as u16)?;
-                out.extend_from_slice(&sof0_sos);
+            if plan_opt.is_some() {
                 out.extend_from_slice(&mu.jpeg_full[start..end]);
-                out.extend_from_slice(&[0xFF, 0xD9]);
-                mm_sizes[i] = (sof0_sos.len() as u32) + (slc.scan_len as u32) + 2;
+                mm_sizes[i] = slc.scan_len as u32;
             } else {
                 out.extend_from_slice(&mu.jpeg_full[start..end]);
                 out.extend_from_slice(&[0xFF, 0xD9]);

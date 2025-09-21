@@ -80,6 +80,20 @@ pub struct AppSegment {
     pub payload: Vec<u8>,
 }
 
+/// Custom APP marker used to stash JPEG plan metadata inside the shared header.
+pub const BLP_PLAN_APP_MARKER: u8 = 0xEF;
+const BLP_PLAN_MAGIC: &[u8; 8] = b"BLPPLAN\0";
+const BLP_PLAN_VERSION: u8 = 0;
+
+/// Lightweight plan template reconstructed from the embedded APP payload.
+///
+/// DQT/DHT are part of the common header, so we only need SOF0/SOS metadata here.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PlanTemplate {
+    pub sof0: Sof0Template,
+    pub sos: SosTemplate,
+}
+
 /// Plan to rebuild headers/scans for all mips.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct JpegPlan {
@@ -213,6 +227,125 @@ impl JpegPlan {
 
         Ok(())
     }
+}
+
+pub fn encode_plan_app_payload(sof0: &Sof0Template, sos: &SosTemplate) -> Vec<u8> {
+    let mut payload = Vec::with_capacity(BLP_PLAN_MAGIC.len() + 1 + 1 + sof0.comps.len() * 4 + 1 + sos.comps.len() * 3 + 4);
+    payload.extend_from_slice(BLP_PLAN_MAGIC);
+    payload.push(BLP_PLAN_VERSION);
+    payload.push(sof0.precision);
+    payload.push(sof0.comps.len() as u8);
+    for c in &sof0.comps {
+        payload.push(c.id);
+        payload.push(c.h);
+        payload.push(c.v);
+        payload.push(c.tq);
+    }
+    payload.push(sos.comps.len() as u8);
+    for c in &sos.comps {
+        payload.push(c.id);
+        payload.push(c.td);
+        payload.push(c.ta);
+    }
+    payload.push(sos.ss);
+    payload.push(sos.se);
+    payload.push(sos.ah);
+    payload.push(sos.al);
+    payload
+}
+
+pub fn decode_plan_app_payload(payload: &[u8]) -> Result<PlanTemplate, BlpError> {
+    if payload.len() < BLP_PLAN_MAGIC.len() + 1 + 1 + 1 + 4 {
+        return Err(BlpError::new("jpeg_plan_app_too_short"));
+    }
+    if payload[..BLP_PLAN_MAGIC.len()] != *BLP_PLAN_MAGIC {
+        return Err(BlpError::new("jpeg_plan_app_bad_magic"));
+    }
+    let mut idx = BLP_PLAN_MAGIC.len();
+    let version = payload[idx];
+    idx += 1;
+    if version != BLP_PLAN_VERSION {
+        return Err(BlpError::new("jpeg_plan_app_bad_version"));
+    }
+    let precision = payload[idx];
+    idx += 1;
+    let comp_count = payload[idx] as usize;
+    idx += 1;
+    if payload.len() < idx + comp_count * 4 + 1 {
+        return Err(BlpError::new("jpeg_plan_app_truncated_sof0"));
+    }
+    let mut sof_comps = Vec::with_capacity(comp_count);
+    for _ in 0..comp_count {
+        let id = payload[idx];
+        let h = payload[idx + 1];
+        let v = payload[idx + 2];
+        let tq = payload[idx + 3];
+        idx += 4;
+        sof_comps.push(SofComp { id, h, v, tq });
+    }
+    if idx >= payload.len() {
+        return Err(BlpError::new("jpeg_plan_app_truncated_sos"));
+    }
+    let sos_count = payload[idx] as usize;
+    idx += 1;
+    if payload.len() < idx + sos_count * 3 + 4 {
+        return Err(BlpError::new("jpeg_plan_app_truncated_sos"));
+    }
+    let mut sos_comps = Vec::with_capacity(sos_count);
+    for _ in 0..sos_count {
+        let id = payload[idx];
+        let td = payload[idx + 1];
+        let ta = payload[idx + 2];
+        idx += 3;
+        sos_comps.push(SosComp { id, td, ta });
+    }
+    let ss = payload[idx];
+    let se = payload[idx + 1];
+    let ah = payload[idx + 2];
+    let al = payload[idx + 3];
+
+    Ok(PlanTemplate { sof0: Sof0Template { precision, comps: sof_comps }, sos: SosTemplate { comps: sos_comps, ss, se, ah, al } })
+}
+
+pub fn extract_plan_template_from_common_header(common: &[u8]) -> Result<Option<PlanTemplate>, BlpError> {
+    if common.len() < 2 || common[0] != 0xFF || common[1] != 0xD8 {
+        return Err(BlpError::new("jpeg_plan_common_bad_soi"));
+    }
+    let mut i = 2usize;
+    while i + 1 < common.len() {
+        if common[i] != 0xFF {
+            return Err(BlpError::new("jpeg_plan_common_bad_marker"));
+        }
+        while i < common.len() && common[i] == 0xFF {
+            i += 1;
+        }
+        if i >= common.len() {
+            break;
+        }
+        let marker = common[i];
+        i += 1;
+        match marker {
+            0x01 | 0xD0..=0xD7 => {
+                continue;
+            }
+            _ => {
+                if i + 2 > common.len() {
+                    return Err(BlpError::new("jpeg_plan_common_truncated_len"));
+                }
+                let seg_len = u16::from_be_bytes([common[i], common[i + 1]]) as usize;
+                if i + seg_len > common.len() {
+                    return Err(BlpError::new("jpeg_plan_common_truncated_segment"));
+                }
+                if marker == BLP_PLAN_APP_MARKER {
+                    let payload = &common[i + 2..i + seg_len];
+                    let tpl = decode_plan_app_payload(payload)?;
+                    return Ok(Some(tpl));
+                }
+                i += seg_len;
+            }
+        }
+    }
+    Ok(None)
 }
 
 /// Simple slices (for each mip) to avoid reparsing when writing full JPEG.
