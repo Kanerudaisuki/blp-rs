@@ -92,6 +92,7 @@ const BLP_PLAN_VERSION: u8 = 0;
 pub struct PlanTemplate {
     pub sof0: Sof0Template,
     pub sos: SosTemplate,
+    pub color_transform: Option<u8>,
 }
 
 /// Plan to rebuild headers/scans for all mips.
@@ -304,7 +305,7 @@ pub fn decode_plan_app_payload(payload: &[u8]) -> Result<PlanTemplate, BlpError>
     let ah = payload[idx + 2];
     let al = payload[idx + 3];
 
-    Ok(PlanTemplate { sof0: Sof0Template { precision, comps: sof_comps }, sos: SosTemplate { comps: sos_comps, ss, se, ah, al } })
+    Ok(PlanTemplate { sof0: Sof0Template { precision, comps: sof_comps }, sos: SosTemplate { comps: sos_comps, ss, se, ah, al }, color_transform: None })
 }
 
 pub fn extract_plan_template_from_common_header(common: &[u8]) -> Result<Option<PlanTemplate>, BlpError> {
@@ -312,6 +313,8 @@ pub fn extract_plan_template_from_common_header(common: &[u8]) -> Result<Option<
         return Err(BlpError::new("jpeg_plan_common_bad_soi"));
     }
     let mut i = 2usize;
+    let mut tpl_opt: Option<PlanTemplate> = None;
+    let mut color_transform: Option<u8> = None;
     while i + 1 < common.len() {
         if common[i] != 0xFF {
             return Err(BlpError::new("jpeg_plan_common_bad_marker"));
@@ -336,16 +339,30 @@ pub fn extract_plan_template_from_common_header(common: &[u8]) -> Result<Option<
                 if i + seg_len > common.len() {
                     return Err(BlpError::new("jpeg_plan_common_truncated_segment"));
                 }
-                if marker == BLP_PLAN_APP_MARKER {
-                    let payload = &common[i + 2..i + seg_len];
-                    let tpl = decode_plan_app_payload(payload)?;
-                    return Ok(Some(tpl));
+                match marker {
+                    BLP_PLAN_APP_MARKER => {
+                        let payload = &common[i + 2..i + seg_len];
+                        let tpl = decode_plan_app_payload(payload)?;
+                        tpl_opt = Some(tpl);
+                    }
+                    0xEE => {
+                        let payload = &common[i + 2..i + seg_len];
+                        if payload.len() >= 12 && &payload[..5] == b"Adobe" {
+                            color_transform = Some(payload[11]);
+                        }
+                    }
+                    _ => {}
                 }
                 i += seg_len;
             }
         }
     }
-    Ok(None)
+    if let Some(mut tpl) = tpl_opt {
+        tpl.color_transform = color_transform;
+        Ok(Some(tpl))
+    } else {
+        Ok(None)
+    }
 }
 
 /// Simple slices (for each mip) to avoid reparsing when writing full JPEG.

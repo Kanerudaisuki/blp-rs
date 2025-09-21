@@ -15,13 +15,10 @@ impl ImageBlp {
         let mut jpeg_header_chunk = vec![0u8; jpeg_header_size];
         cursor.read_exact(&mut jpeg_header_chunk)?;
 
-        let plan_template = match extract_plan_template_from_common_header(&jpeg_header_chunk) {
-            Ok(v) => v,
-            Err(e) => {
-                eprintln!("[decode] failed to read JPEG plan from common header: {e}");
-                None
-            }
-        };
+        let plan_template = extract_plan_template_from_common_header(&jpeg_header_chunk).unwrap_or_else(|e| {
+            eprintln!("[decode] failed to read JPEG plan from common header: {e}");
+            None
+        });
 
         for (idx, slice_opt) in slices.into_iter().enumerate() {
             if let Some(slice) = slice_opt {
