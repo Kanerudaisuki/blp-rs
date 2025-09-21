@@ -1,6 +1,6 @@
 use normpath::PathExt as _;
 use path_absolutize::Absolutize as _;
-use std::path::{Path, PathBuf};
+use std::{env, path::{Path, PathBuf}};
 
 pub trait PathMacrosExt {
     /// Абсолютный, нормализованный путь, свернутый в ~ (unix) или %VAR% (windows).
@@ -12,14 +12,22 @@ impl PathMacrosExt for Path {
         // 0) Делает путь абсолютным от CWD (не требует существования)
         let abs0: PathBuf = self
             .absolutize()
-            .expect("absolutize")
-            .into_owned();
+            .map(|p| p.into_owned())
+            .unwrap_or_else(|_| {
+                if self.is_absolute() {
+                    self.to_path_buf()
+                } else {
+                    env::current_dir()
+                        .map(|cwd| cwd.join(self))
+                        .unwrap_or_else(|_| self.to_path_buf())
+                }
+            });
 
         // 1) Нормализует . и .. (логическая нормализация, без fs)
         let abs: PathBuf = abs0
             .normalize()
-            .expect("normalize")
-            .into_path_buf();
+            .map(|p| p.into_path_buf())
+            .unwrap_or_else(|_| abs0.clone());
 
         // 1.1) На Windows убираем \\?\ и прочие артефакты
         #[cfg(windows)]
@@ -30,7 +38,7 @@ impl PathMacrosExt for Path {
         // 2) Сворачивание префикса
         #[cfg(unix)]
         {
-            if let Ok(home) = std::env::var("HOME") {
+            if let Ok(home) = env::var("HOME") {
                 let pref = trim_trailing_slash(home);
                 if has_prefix_boundary(&s, &pref, false) {
                     s = format!("~{}", &s[pref.len()..]);
@@ -130,10 +138,20 @@ mod tests {
     #[cfg(unix)]
     fn folds_unix_home() {
         let tmp = tempfile::tempdir().unwrap();
+        let home_path = tmp.path().canonicalize().unwrap();
+        let home_string = home_path.to_string_lossy().into_owned();
+        let prev_home = env::var("HOME");
+        let cwd_before = env::current_dir().unwrap();
         unsafe {
-            env::set_var("HOME", tmp.path().to_str().unwrap());
+            env::set_var("HOME", &home_string);
         }
+        env::set_current_dir(&home_path).unwrap();
         let p = Path::new("foo/../bar").to_abs_string_with_macros();
+        env::set_current_dir(cwd_before).unwrap();
+        match prev_home {
+            Ok(val) => unsafe { env::set_var("HOME", val) },
+            Err(_) => unsafe { env::remove_var("HOME") },
+        }
         // Должно схлопнуться к абсолютному внутри HOME → "~"
         assert!(p.starts_with("~/"));
         assert!(p.ends_with("/bar"));

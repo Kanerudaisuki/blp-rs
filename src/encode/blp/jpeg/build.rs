@@ -94,12 +94,6 @@ pub fn build_common_header(plan: &JpegPlan) -> Result<Vec<u8>, BlpError> {
     Ok(out)
 }
 
-/// Build per-mip SOF0 (with width/height) + SOS from templates.
-pub fn build_sof0_sos(plan: &JpegPlan, width: u16, height: u16) -> Result<Vec<u8>, BlpError> {
-    plan.sanity()?;
-    build_sof0_sos_from_templates(&plan.sof0, &plan.sos, width, height)
-}
-
 pub fn build_sof0_sos_from_templates(sof0: &Sof0Template, sos: &SosTemplate, width: u16, height: u16) -> Result<Vec<u8>, BlpError> {
     if width == 0 || height == 0 {
         return Err(BlpError::new("jpeg_zero_dim"));
@@ -140,14 +134,4 @@ pub fn build_sof0_sos_from_templates(sof0: &Sof0Template, sos: &SosTemplate, wid
     }
 
     Ok(out)
-}
-
-/// Build a complete JPEG in-place for a mip: `common + sof0+sos + scan + EOI`.
-pub fn assemble_full_jpeg(common_header: &[u8], sof0_sos: &[u8], scan: &[u8]) -> Vec<u8> {
-    let mut out = Vec::with_capacity(common_header.len() + sof0_sos.len() + scan.len() + 2);
-    out.extend_from_slice(common_header);
-    out.extend_from_slice(sof0_sos);
-    out.extend_from_slice(scan);
-    out.extend_from_slice(&[0xFF, 0xD9]); // EOI
-    out
 }
