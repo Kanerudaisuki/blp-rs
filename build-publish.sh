@@ -22,7 +22,7 @@ esac
 echo "🔢 Версия: $CURR_VERSION → $NEW_VERSION"
 TAG="v$NEW_VERSION"
 
-# bump Cargo.toml
+# 1) Бамп версии в Cargo.toml
 if sed --version &>/dev/null; then
   sed -E -i "s/^version *= *\"[0-9]+\.[0-9]+\.[0-9]+([^\"]*)?\"/version = \"$NEW_VERSION\"/" Cargo.toml
 else
@@ -30,23 +30,22 @@ else
 fi
 [[ -f Cargo.lock ]] && cargo generate-lockfile >/dev/null
 
+# 2) Коммит + тэг (на новой версии)
 git add Cargo.toml Cargo.lock 2>/dev/null || true
 git commit -m "chore(release): $TAG"
-git push origin HEAD
 git tag -a "$TAG" -m "$PROJECT_NAME $NEW_VERSION"
-git push origin "$TAG"
+git push origin HEAD --tags
 
-# Проверка артефактов
-[[ -d "$DIST_DIR" ]] || { echo "❌ Нет каталога $DIST_DIR. Сначала запусти ./build-only.sh"; exit 1; }
+# 3) Чистая сборка артефактов уже с новой версией
+# (важно не тащить старые файлы в $DIST_DIR)
+rm -rf "$DIST_DIR"
+"./build-only.sh"
 
-echo "🚀 Release $TAG"
-
-# Соберём явный список файлов (без директорий) — совместимо с bash 3.2
+# 4) Собираем список файлов для релиза
 ASSETS=()
-while IFS= read -r -d '' f; do
-  ASSETS+=("$f")
-done < <(find "$DIST_DIR" -maxdepth 1 -type f -print0)
+while IFS= read -r -d '' f; do ASSETS+=("$f"); done < <(find "$DIST_DIR" -maxdepth 1 -type f -print0)
 
+# 5) Публикуем релиз
 gh release create "$TAG" "${ASSETS[@]}" \
   --title "$PROJECT_NAME $NEW_VERSION" \
   --generate-notes
