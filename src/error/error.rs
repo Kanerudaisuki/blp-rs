@@ -1,5 +1,6 @@
-use crate::err::args::ArgVal;
-use crate::err::cause::Cause;
+use crate::error::args::ArgVal;
+use crate::error::cause::Cause;
+use num_enum::TryFromPrimitiveError;
 use std::{collections::BTreeMap, fmt, io, sync::Arc};
 
 #[derive(Debug, Clone)]
@@ -106,5 +107,15 @@ impl From<jpeg_decoder::Error> for BlpError {
 impl From<turbojpeg::Error> for BlpError {
     fn from(e: turbojpeg::Error) -> Self {
         BlpError::new("turbojpeg-error").push_std(e)
+    }
+}
+
+impl<T> From<TryFromPrimitiveError<T>> for BlpError
+where
+    T: num_enum::TryFromPrimitive + 'static,
+    T::Primitive: Copy + Into<u64>,
+{
+    fn from(_err: TryFromPrimitiveError<T>) -> Self {
+        BlpError::new("num-error").with_arg("name", core::any::type_name::<T>())
     }
 }

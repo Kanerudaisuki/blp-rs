@@ -1,5 +1,5 @@
-use crate::err::error::BlpError;
-use crate::image_blp::{ImageBlp, MAX_MIPS};
+use crate::error::error::BlpError;
+use crate::core::image::{ImageBlp, MAX_MIPS};
 use image::RgbaImage;
 use image::{DynamicImage, imageops::FilterType};
 use std::{ffi::CStr, ptr};

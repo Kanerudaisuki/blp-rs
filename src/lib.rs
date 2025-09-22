@@ -1,17 +1,9 @@
 #[cfg(feature = "cli")]
 mod cli;
-mod decode;
-pub mod encode;
-pub mod err;
-mod export;
+pub mod core;
+pub mod error;
 mod ext;
-mod from;
-pub mod header;
-pub mod image_blp;
-pub mod mipmap;
 pub mod run;
-pub mod texture_type;
 #[cfg(feature = "ui")]
 pub mod ui;
 mod util;
-pub mod version;

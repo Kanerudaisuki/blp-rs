@@ -1,4 +1,4 @@
-use crate::image_blp::MAX_MIPS;
+use crate::core::image::MAX_MIPS;
 use crate::ui::viewer::app::App;
 use eframe::egui::{Button, Context, CursorIcon, Frame, Margin, Response, RichText, ScrollArea, Sense, SidePanel, TextStyle, Ui, vec2};
 

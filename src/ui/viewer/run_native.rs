@@ -1,4 +1,4 @@
-use crate::err::error::BlpError;
+use crate::error::error::BlpError;
 use crate::ui::viewer::app::App;
 use eframe::egui::{ViewportBuilder, vec2};
 use eframe::{NativeOptions, Renderer};

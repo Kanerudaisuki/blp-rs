@@ -1,5 +1,5 @@
-use crate::decode::input::DecodeInput;
-use crate::err::error::BlpError;
+use crate::ui::viewer::layout::file_picker::file_pick_input::FilePickInput;
+use crate::error::error::BlpError;
 use crate::ext::path::ensure_readable::EnsureReadable;
 use crate::ui::viewer::app::App;
 use std::path::PathBuf;
@@ -24,7 +24,7 @@ impl App {
 
         // поток для декодирования
         thread::spawn(move || {
-            let res = DecodeInput::Path(path).decode();
+            let res = FilePickInput::Path(path).decode();
             let _ = tx.send(res);
         });
 

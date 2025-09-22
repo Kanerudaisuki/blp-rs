@@ -1,4 +1,4 @@
-use crate::err::error::BlpError;
+use crate::error::error::BlpError;
 
 #[cfg(any(feature = "cli", feature = "ui"))]
 use std::path::PathBuf;

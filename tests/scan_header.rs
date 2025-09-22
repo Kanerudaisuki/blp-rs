@@ -1,13 +1,11 @@
 #[cfg(test)]
 mod scan_header {
-    use blp_rs::header::{HEADER_SIZE, Header};
-    use blp_rs::image_blp::ImageBlp;
-    use blp_rs::texture_type::TextureType;
-    use image::{DynamicImage, ImageFormat};
-    use std::fs::{self, File};
-    use std::io::{BufWriter, Cursor, Read};
+    use std::fs;
     use std::path::Path;
     use walkdir::WalkDir;
+
+    use blp_rs::core::image::ImageBlp;
+    use blp_rs::core::types::TextureType;
 
     const DEST_DIR: &str = "/Users/nazarpunk/IdeaProjects/War3.mpq/extract";
     const OUT_DIR: &str = "test-data/scan";
@@ -49,26 +47,25 @@ mod scan_header {
                 continue;
             }
 
-            // читаем заголовок
-            let mut buf = vec![0u8; HEADER_SIZE as usize];
-            if let Err(_e) = File::open(path).and_then(|mut f| f.read_exact(&mut buf)) {
-                continue;
-            }
-            let mut cursor = Cursor::new(&buf[..]);
-            let header = match Header::parse(&mut cursor) {
-                Ok(h) => h,
+            // читаем весь файл и размечаем
+            let data = match fs::read(path) {
+                Ok(d) => d,
+                Err(_) => continue,
+            };
+            let img = match ImageBlp::from_buf(&data) {
+                Ok(x) => x,
                 Err(_) => continue,
             };
 
-            // ключ уникальности по заголовку
-            let key = format!("{:?}_tt{}_c{}_ab{}_at{}_m{}_{}x{}", header.version, header.texture_type as u8, header.compression, header.alpha_bits, header.alpha_type, header.has_mips, header.width, header.height,);
+            // ключ уникальности по полям ImageBlp
+            let key = format!("{:?}_tt{}_c{}_ab{}_at{}_m{}_{}x{}", img.version, img.texture_type as u8, img.compression, img.alpha_bits, img.alpha_type, img.has_mips, img.width, img.height);
 
             // если уже есть такой ключ — пропускаем
             if picked_keys.contains(&key) {
                 continue;
             }
 
-            // создаём папку с именем ключа, если вдруг существует — тоже пропускаем (мы берём только первый)
+            // создаём папку с именем ключа
             let out_dir = out_root.join(&key);
             if out_dir.exists() {
                 continue;
@@ -99,8 +96,9 @@ mod scan_header {
 
     #[test]
     fn convert() {
-        // Конвертим все .blp **внутри их собственных папок** в PNG-мипмапы
-        // PNG кладём рядом, в ту же папку.
+        // Конвертим все .blp **внутри их собственных папок**:
+        // - PNG мипмапы (из RGBA)
+        // - для JPEG: дополнительно сырые JPG мипы через [header][tail] без перекодирования
         for entry in WalkDir::new(Path::new(OUT_DIR))
             .into_iter()
             .filter_map(Result::ok)
@@ -126,13 +124,19 @@ mod scan_header {
                 }
             };
 
-            let image = match ImageBlp::from_buf(&data) {
-                Ok(img) => img,
+            let mut img = match ImageBlp::from_buf(&data) {
+                Ok(x) => x,
                 Err(e) => {
                     eprintln!("❌ Failed to parse {}: {e}", path.display());
                     continue;
                 }
             };
+
+            // декодируем (PNG будут доступны для экспортов)
+            if let Err(e) = img.decode(&data) {
+                eprintln!("❌ Failed to decode {}: {e}", path.display());
+                continue;
+            }
 
             let stem = path
                 .file_stem()
@@ -142,21 +146,22 @@ mod scan_header {
                 .parent()
                 .unwrap_or_else(|| Path::new(OUT_DIR));
 
-            for (idx, mip) in image.mipmaps.iter().enumerate() {
-                if let Some(rgba) = &mip.image {
-                    // Пример имени: <original>_mip0_256x256.png
+            for (idx, mip) in img.mipmaps.iter().enumerate() {
+                // ---------- PNG из RGBA (только если уже декодировано) ----------
+                if mip.image.is_some() {
                     let filename = format!("{stem}_mip{idx}_{}x{}.png", mip.width, mip.height);
-                    let output_path = parent.join(filename);
-                    match File::create(&output_path) {
-                        Ok(file) => {
-                            let mut writer = BufWriter::new(file);
-                            if let Err(e) = DynamicImage::ImageRgba8(rgba.clone()).write_to(&mut writer, ImageFormat::Png) {
-                                eprintln!("❌ Failed to write PNG {}: {e}", output_path.display());
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("❌ Failed to create {}: {e}", output_path.display());
-                        }
+                    let output_path = parent.join(&filename);
+                    if let Err(e) = img.export_png(mip, &output_path) {
+                        eprintln!("❌ Failed to write PNG {}: {e}", output_path.display());
+                    }
+                }
+
+                // ---------- JPG (сырые мипы) для JPEG-текстур ----------
+                if img.texture_type == TextureType::JPEG && mip.length > 0 {
+                    let filename = format!("{stem}_mip{idx}_{}x{}.jpg", mip.width, mip.height);
+                    let output_path = parent.join(&filename);
+                    if let Err(e) = img.export_jpg(mip, &data, &output_path) {
+                        eprintln!("❌ Failed to write JPG {}: {e}", output_path.display());
                     }
                 }
             }
@@ -253,10 +258,10 @@ mod scan_header {
 
             match result {
                 Ok(blp) => {
-                    let res = (blp.header.width, blp.header.height);
+                    let res = (blp.width, blp.height);
                     let size = data.len();
 
-                    match blp.header.texture_type {
+                    match blp.texture_type {
                         TextureType::JPEG => {
                             jpeg_total += 1;
                             jpeg_total_size += size;

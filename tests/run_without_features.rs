@@ -1,6 +1,6 @@
 #![cfg(all(not(feature = "cli"), not(feature = "ui")))]
 
-use blp_rs::err::args::ArgVal;
+use blp_rs::error::args::ArgVal;
 use blp_rs::run::run;
 
 #[test]

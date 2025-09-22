@@ -1,5 +1,4 @@
-use crate::err::error::BlpError;
-use crate::export::png::export_png;
+use crate::error::error::BlpError;
 use crate::ui::viewer::app::App;
 use crate::ui::viewer::layout::file_saver::export_quality::export_quality_save;
 use crate::ui::viewer::layout::file_saver::save_same_dir::save_same_dir_save;
@@ -22,7 +21,7 @@ impl App {
 
     fn run_export<F>(&mut self, f: F)
     where
-        F: FnOnce(&crate::image_blp::ImageBlp) -> Result<(), BlpError>,
+        F: FnOnce(&crate::core::image::ImageBlp) -> Result<(), BlpError>,
     {
         let res = if let Some(img) = self.blp.as_ref() { f(img) } else { Err(BlpError::new("error-save-no-image")) };
         self.error = res.err();
@@ -102,7 +101,7 @@ impl App {
                                     .clicked()
                                 {
                                     if let Some(path) = self.pick_save_path(&def_png, "png", self.tr("png-image")) {
-                                        self.run_export(|img| export_png(img, &path));
+                                        self.run_export(|img| img.export_png(img.mipmaps.get(0).unwrap(), &path));
                                     }
                                 }
                             });

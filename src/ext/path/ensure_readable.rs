@@ -1,4 +1,4 @@
-use crate::err::error::BlpError;
+use crate::error::error::BlpError;
 use std::{fs, io, io::Read, path::Path};
 
 /// Расширение для [`Path`] с проверкой и чтением файла.

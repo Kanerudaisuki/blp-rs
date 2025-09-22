@@ -1,4 +1,4 @@
-use crate::err::error::BlpError;
+use crate::error::error::BlpError;
 use eframe::egui::{Context, FontFamily};
 use eframe::epaint::text::{FontData, FontDefinitions};
 use std::io::{self, Read};

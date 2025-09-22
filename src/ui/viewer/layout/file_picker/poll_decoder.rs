@@ -1,5 +1,5 @@
-use crate::err::error::BlpError;
-use crate::image_blp::MAX_MIPS;
+use crate::error::error::BlpError;
+use crate::core::image::MAX_MIPS;
 use crate::ui::viewer::app::App;
 use eframe::egui::{ColorImage, Context, TextureOptions, vec2};
 use std::sync::mpsc::TryRecvError;

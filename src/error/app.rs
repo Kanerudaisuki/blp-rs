@@ -1,5 +1,5 @@
-use crate::err::cause::Cause;
-use crate::err::error::BlpError;
+use crate::error::cause::Cause;
+use crate::error::error::BlpError;
 use crate::ui::viewer::update::App;
 use fluent_templates::fluent_bundle::FluentArgs;
 use std::fmt::Write;
@@ -13,7 +13,7 @@ impl App {
     }
 
     fn fmt_err_loc(&self, err: &BlpError, indent: usize, out: &mut String) {
-        // Собираем FluentArgs из err.args
+        // Собираем FluentArgs из error.args
         let mut fargs = FluentArgs::new();
         for (k, v) in &err.args {
             fargs.set(*k, v.to_fluent_owned());

@@ -1,5 +1,5 @@
-use crate::decode::input::DecodeInput;
-use crate::err::error::BlpError;
+use crate::ui::viewer::layout::file_picker::file_pick_input::FilePickInput;
+use crate::error::error::BlpError;
 use crate::ui::viewer::app::App;
 
 impl App {
@@ -66,7 +66,7 @@ impl App {
         self.loading = true;
 
         thread::spawn(move || {
-            let res = DecodeInput::Bytes(buf).decode();
+            let res = FilePickInput::Bytes(buf).decode();
             let _ = tx.send(res);
         });
 

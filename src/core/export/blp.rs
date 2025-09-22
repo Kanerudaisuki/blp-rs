@@ -1,5 +1,5 @@
-use crate::err::error::BlpError;
-use crate::image_blp::ImageBlp;
+use crate::error::error::BlpError;
+use crate::core::image::ImageBlp;
 use std::fs;
 use std::path::Path;
 

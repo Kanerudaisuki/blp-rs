@@ -3,8 +3,8 @@
 
 #[cfg(test)]
 pub mod to_blp {
-    use blp_rs::err::error::BlpError;
-    use blp_rs::image_blp::ImageBlp;
+    use blp_rs::core::image::ImageBlp;
+    use blp_rs::error::error::BlpError;
     use std::fs;
     use std::panic::{AssertUnwindSafe, catch_unwind};
     use std::path::{Path, PathBuf};
@@ -103,7 +103,6 @@ pub mod to_blp {
                 panic!("from_buf(blp) panicked");
             }
         };
-        eprintln!("  parsed header: {}x{}", parsed.header.width, parsed.header.height);
 
         // --- запуск UI через cargo run с фичами ---
         eprintln!("Step 8: running UI via `cargo run --release --bin blp-rs-ui --features \"cli ui\"`...");
