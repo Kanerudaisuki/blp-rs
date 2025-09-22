@@ -1,6 +1,6 @@
+use crate::core::image::ImageBlp;
 use crate::error::error::BlpError;
 use crate::ext::path::ensure_readable::EnsureReadable;
-use crate::core::image::ImageBlp;
 use std::path::PathBuf;
 
 pub enum FilePickInput {
@@ -9,13 +9,17 @@ pub enum FilePickInput {
 }
 
 impl FilePickInput {
-    pub fn decode(self) -> Result<ImageBlp, BlpError> {
+    fn into_bytes(self) -> Result<Vec<u8>, BlpError> {
         match self {
-            FilePickInput::Path(path) => {
-                let data = path.as_path().read_all()?;
-                ImageBlp::from_buf(&data)
-            }
-            FilePickInput::Bytes(data) => ImageBlp::from_buf(&data),
+            FilePickInput::Path(path) => path.as_path().read_all(),
+            FilePickInput::Bytes(data) => Ok(data),
         }
+    }
+
+    pub fn decode(self) -> Result<ImageBlp, BlpError> {
+        let data = self.into_bytes()?;
+        let mut img = ImageBlp::from_buf(&data)?;
+        img.decode(&data)?;
+        Ok(img)
     }
 }

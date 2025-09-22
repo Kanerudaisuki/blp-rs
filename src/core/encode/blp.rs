@@ -1,5 +1,5 @@
-use crate::error::error::BlpError;
 use crate::core::image::{ImageBlp, MAX_MIPS};
+use crate::error::error::BlpError;
 use image::RgbaImage;
 use image::{DynamicImage, imageops::FilterType};
 use std::{ffi::CStr, ptr};
@@ -290,7 +290,6 @@ impl ImageBlp {
         // --- последовательно дошагиваем по всем уровням, но пишем только от first_vis ---
         struct Slice {
             head_len: usize,
-            scan_len: usize,
         }
         struct Enc {
             data: Vec<u8>,
@@ -373,8 +372,8 @@ impl ImageBlp {
             rebuilt.extend_from_slice(scan);
             rebuilt.extend_from_slice(eoi);
 
-            let (h2, s2) = split_header_and_scan(&rebuilt)?;
-            enc_by_slot[slot] = Some(Enc { data: rebuilt, sl: Slice { head_len: h2, scan_len: s2 } });
+            let (h2, _s2) = split_header_and_scan(&rebuilt)?;
+            enc_by_slot[slot] = Some(Enc { data: rebuilt, sl: Slice { head_len: h2 } });
         }
 
         // гарантируем, что слот 0 присутствует (BLP не стартует с пустого)
