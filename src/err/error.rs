@@ -81,32 +81,30 @@ impl std::error::Error for BlpError {
 
 impl From<io::Error> for BlpError {
     fn from(e: io::Error) -> Self {
-        BlpError::new("io-error")
-            .with_arg("msg", e.to_string())
-            .push_std(e)
+        BlpError::new("io-error").push_std(e)
     }
 }
 
 impl From<image::ImageError> for BlpError {
     fn from(e: image::ImageError) -> Self {
-        BlpError::new("image-error")
-            .with_arg("msg", e.to_string())
-            .push_std(e)
+        BlpError::new("image-error").push_std(e)
     }
 }
 
 impl From<image::error::DecodingError> for BlpError {
     fn from(e: image::error::DecodingError) -> Self {
-        BlpError::new("png-error")
-            .with_arg("msg", e.to_string())
-            .push_std(e)
+        BlpError::new("png-error").push_std(e)
     }
 }
 
 impl From<jpeg_decoder::Error> for BlpError {
     fn from(e: jpeg_decoder::Error) -> Self {
-        BlpError::new("jpeg-error")
-            .with_arg("msg", e.to_string())
-            .push_std(e)
+        BlpError::new("jpeg-error").push_std(e)
+    }
+}
+
+impl From<turbojpeg::Error> for BlpError {
+    fn from(e: turbojpeg::Error) -> Self {
+        BlpError::new("turbojpeg-error").push_std(e)
     }
 }

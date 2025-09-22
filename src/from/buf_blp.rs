@@ -104,6 +104,10 @@ impl ImageBlp {
             }
         }
 
-        Ok(Self { header, mipmaps, holes })
+        Ok(Self {
+            header, //
+            mipmaps,
+            ..Default::default()
+        })
     }
 }

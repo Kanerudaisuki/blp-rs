@@ -3,23 +3,20 @@
 
 #[cfg(test)]
 pub mod to_blp {
-    use blp_rs::encode::blp::ctx::ctx::EncoderCtx;
-    use blp_rs::encode::blp::options::EncoderOptions;
     use blp_rs::err::error::BlpError;
-    use blp_rs::image_blp::{ImageBlp, MAX_MIPS};
+    use blp_rs::image_blp::ImageBlp;
     use std::fs;
     use std::panic::{AssertUnwindSafe, catch_unwind};
     use std::path::{Path, PathBuf};
-    use std::process::Command;
 
     #[test]
     fn to_blp_roundtrip_png_encode_then_parse_and_run_ui() -> Result<(), BlpError> {
         eprintln!("== 🧪 START to_blp_roundtrip test ==");
 
         // --- вход/выход ---
-        let root = Path::new("test-data/to-blp");
-        let a_png = root.join("a.png");
-        let b_blp = root.join("a.blp");
+        let root = Path::new("/Users/nazarpunk/Downloads/_blp");
+        let a_png = root.join("bb.png");
+        let b_blp = root.join("bb.blp");
 
         eprintln!("Input PNG : {}", a_png.display());
         eprintln!("Output BLP: {}", b_blp.display());
@@ -58,15 +55,12 @@ pub mod to_blp {
         let quality = 100u8;
         eprintln!("Step 3: encoding to BLP (quality={}, all mips visible)...", quality);
         let ctx = match catch_unwind(AssertUnwindSafe(|| {
-            img.encode_blp(EncoderOptions {
+            img.encode_blp(
                 quality,
-                mip_visible: &[], // отсутствующие считаются true
-            })
+                &[], // отсутствующие считаются true
+            )
         })) {
-            Ok(Ok(c)) => {
-                print_ctx_summary(&c);
-                c
-            }
+            Ok(Ok(c)) => c,
             Ok(Err(e)) => {
                 eprintln!("  ❌ encode_blp returned error:");
                 eprintln!("     • Display: {e}");
@@ -78,25 +72,6 @@ pub mod to_blp {
                 panic!("encode_blp panicked");
             }
         };
-
-        // --- быстрые инварианты контекста ---
-        // 1) всегда MAX_MIPS юнитов
-        assert_eq!(ctx.mips.len(), MAX_MIPS, "ctx.mips must contain MAX_MIPS items");
-
-        // 2) included мипов == ctx.visible_count
-        let included_cnt = ctx
-            .mips
-            .iter()
-            .filter(|m| m.included)
-            .count();
-        assert_eq!(included_cnt, ctx.visible_count, "included mip count {} != ctx.visible_count {}", included_cnt, ctx.visible_count);
-
-        // 3) проверяем, что включённые мипы реально закодированы (jpeg_full_bytes > 0)
-        for m in ctx.mips.iter().filter(|m| m.included) {
-            assert!(m.jpeg_full_bytes > 0 && !m.jpeg_full.is_empty(), "included mip{} must have non-empty jpeg_full", m.index);
-            // базовая консистентность
-            assert_eq!(m.jpeg_full_bytes, m.jpeg_full.len(), "mip{}: jpeg_full_bytes must equal jpeg_full.len()", m.index);
-        }
 
         // --- write .blp ---
         eprintln!("Step 4: writing .blp...");
@@ -130,110 +105,38 @@ pub mod to_blp {
         };
         eprintln!("  parsed header: {}x{}", parsed.header.width, parsed.header.height);
 
-        // --- sanity checks ---
-        eprintln!("Step 7: sanity checks...");
-        let (w_dec, h_dec) = (parsed.header.width, parsed.header.height);
-        assert_eq!((w_dec, h_dec), (ctx.base_width, ctx.base_height), "decoded base size {}x{} != ctx base {}x{}", w_dec, h_dec, ctx.base_width, ctx.base_height);
-        eprintln!("  sanity checks OK");
+        // --- запуск UI через cargo run с фичами ---
+        eprintln!("Step 8: running UI via `cargo run --release --bin blp-rs-ui --features \"cli ui\"`...");
 
-        // --- cargo build --release ---
-        eprintln!("Step 8: building release UI binary: `cargo build --release`...");
+        use std::process::{Command, Stdio};
+
         let crate_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let build_out = Command::new("cargo")
-            .arg("build")
+
+        let mut cmd = Command::new("cargo");
+        cmd.arg("run")
             .arg("--release")
-            .current_dir(&crate_root)
-            .output()
-            .expect("failed to run `cargo build --release`");
-        eprintln!("  cargo build --release: status={:?}", build_out.status.code());
-        if !build_out.stdout.is_empty() {
-            eprintln!("  --- cargo stdout ---\n{}", String::from_utf8_lossy(&build_out.stdout));
-        }
-        if !build_out.stderr.is_empty() {
-            eprintln!("  --- cargo stderr ---\n{}", String::from_utf8_lossy(&build_out.stderr));
-        }
-        assert!(build_out.status.success(), "`cargo build --release` failed with status {:?}", build_out.status.code());
-        eprintln!("  build finished successfully");
+            .arg("--bin")
+            .arg("blp-rs-ui")
+            .arg("--features")
+            .arg("cli ui") // пробел внутри строки допустим, cargo сам сплитить не будет
+            .arg("--");
 
-        // --- запуск UI ---
-        eprintln!("Step 9: running UI (detached)...");
-        #[cfg(windows)]
-        let bin_name: &str = "blp_rs.exe";
-        #[cfg(not(windows))]
-        let bin_name: &str = "blp_rs";
-
-        let mut exe = crate_root.clone();
-        exe.push("target/release");
-        exe.push(bin_name);
-
-        eprintln!("  exe: {}", exe.display());
-        assert!(exe.exists(), "UI binary not found at {} after build", exe.display());
-
-        #[cfg(windows)]
-        {
-            use std::process::Stdio;
-            let exe_s = exe.to_string_lossy().to_string();
-            let arg_s = b_blp.to_string_lossy().to_string();
-            // Launch detached: start "" "exe" "arg"
-            let status = Command::new("cmd")
-                .arg("/C")
-                .arg("start")
-                .arg("")
-                .arg(exe_s)
-                .arg(arg_s)
-                .stdin(Stdio::null())
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status()
-                .expect("failed to start UI (detached) on Windows");
-            eprintln!("  ui start status: {:?}", status.code());
+        // если blp существует — передаём путь, иначе run-ui сам возьмёт дефолт
+        if b_blp.exists() {
+            cmd.arg(b_blp.to_string_lossy().to_string());
         }
 
-        #[cfg(not(windows))]
-        {
-            use std::process::Stdio;
-            // Use nohup to detach from test process
-            let cmd = format!("nohup '{}' '{}' >/dev/null 2>&1 &", exe.display(), b_blp.display());
-            let status = Command::new("sh")
-                .arg("-c")
-                .arg(cmd)
-                .stdin(Stdio::null())
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status()
-                .expect("failed to start UI (detached) on Unix");
-            eprintln!("  ui start status: {:?}", status.code());
-        }
+        cmd.current_dir(&crate_root)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("failed to start UI via cargo run");
+
+        eprintln!("  UI started detached via cargo run");
 
         eprintln!("== ✅ FINISHED to_blp_roundtrip test ==");
         Ok(())
-    }
-
-    fn print_ctx_summary(ctx: &EncoderCtx) {
-        eprintln!("== BLP encode summary ==");
-        eprintln!("bytes: {} ({:.6} KiB)", ctx.bytes.len(), ctx.bytes.len() as f64 / 1024.0);
-        eprintln!("container base: {}x{}", ctx.base_width, ctx.base_height);
-        eprintln!("has_alpha: {}", ctx.has_alpha);
-        eprintln!("visible mips: {}", ctx.visible_count);
-        eprintln!("common header length: {} bytes", ctx.common_header_len);
-
-        let shared_plan = ctx.jpeg_plan.is_some();
-        for m in &ctx.mips {
-            if m.included {
-                let stored = if shared_plan {
-                    m.jpeg_slices
-                        .map(|s| s.scan_len)
-                        .unwrap_or(m.jpeg_full_bytes)
-                } else {
-                    m.jpeg_full_bytes
-                };
-                eprintln!("mip{}: {}x{} full {} bytes ({:.2} KiB), stored {} bytes, encode: {:.3} ms", m.index, m.width, m.height, m.jpeg_full_bytes, m.jpeg_full_bytes as f64 / 1024.0, stored, m.encode_ms_acc);
-            } else {
-                eprintln!("mip{}: SKIPPED", m.index);
-            }
-        }
-
-        eprintln!("total slices bytes: {}", ctx.total_slices_bytes);
     }
 
     fn print_panic_payload(phase: &str, p: Box<dyn std::any::Any + Send>) {

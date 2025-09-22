@@ -41,6 +41,9 @@ mips-all = Все
 mips-none = Никто
 hint-mips-all = Включить все уровни мипов
 hint-mips-none = Отключить все уровни мипов
+blp-quality = Качество BLP
+blp-quality-hint = JPEG-качество при экспорте текстур BLP
+no-visible-mip-hint = Ни один мип не выбран. Используйте панель справа, чтобы выбрать уровни.
 
 blp-texture = BLP текстура
 png-image = PNG изображение
@@ -64,4 +67,3 @@ error-clipboard-init-failed = Не удалось получить доступ 
 error-clipboard-no-image = В буфере обмена нет изображения.
 error-clipboard-invalid-buffer = Некорректный буфер изображения (ширина={ $width }, высота={ $height }).
 error-clipboard-encode-png-failed = Не удалось закодировать PNG из изображения буфера обмена.
-

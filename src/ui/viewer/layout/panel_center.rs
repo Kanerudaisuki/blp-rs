@@ -10,6 +10,17 @@ impl App {
                 if self.loading {
                     return self.draw_spinner(ctx);
                 }
+
+                let any_visible = self
+                    .mip_visible
+                    .iter()
+                    .any(|visible| *visible);
+                if !any_visible {
+                    ui.centered_and_justified(|ui| {
+                        ui.label(RichText::new(self.tr("no-visible-mip-hint")));
+                    });
+                    return;
+                }
                 ScrollArea::vertical()
                     .id_salt("right_scroll_mips")
                     .show(ui, |ui| {

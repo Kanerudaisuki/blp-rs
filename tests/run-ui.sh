@@ -1,11 +1,17 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-A=../test-data/scan/BLP1_tt0_c0_ab8_at0_m0_512x64/Loading-BarGlass.blp
-A=../test-data/scan/BLP1_tt1_c0_ab8_at0_m0_512x128/CenterPanel01.blp
-#A=~/Downloads/PSD/272280-f1c6ea1c7e5aac25781dab8c5798361e.psd
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+PROJECT_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
 
-cargo build --release
+DEFAULT_INPUT="${PROJECT_ROOT}/test-data/scan/BLP1_tt1_c0_ab8_at0_m0_512x128/CenterPanel01.blp"
+DEFAULT_INPUT="/Users/nazarpunk/Downloads/_blp/bb.blp"
 
-#./../target/release/blp_rs "$A"
-./../target/release/blp_rs
+cd "${PROJECT_ROOT}"
+
+ARGS=("$@")
+if [[ ${#ARGS[@]} -eq 0 ]]; then
+    ARGS=("${DEFAULT_INPUT}")
+fi
+
+cargo run --release --bin blp-rs-ui --features "cli ui" -- "${ARGS[@]}"

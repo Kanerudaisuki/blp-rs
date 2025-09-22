@@ -1,3 +1,4 @@
+#[cfg(feature = "ui")]
 mod app;
 pub mod args;
 mod cause;

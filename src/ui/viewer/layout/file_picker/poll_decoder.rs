@@ -23,6 +23,7 @@ impl App {
             // === успех ===
             Ok(Ok(blp)) => {
                 // Заливка текстур только для существующих уровней
+                self.mip_visible.fill(false);
                 for (i, m) in blp
                     .mipmaps
                     .iter()
@@ -34,14 +35,12 @@ impl App {
                         let mut ci = ColorImage::from_rgba_unmultiplied([w, h], img.as_raw());
                         ci.source_size = vec2(w as f32, h as f32);
                         self.mip_textures[i] = Some(ctx.load_texture(format!("mip_{i}"), ci, TextureOptions::LINEAR));
+                        self.mip_visible[i] = true;
                     } else {
                         self.mip_textures[i] = None;
+                        self.mip_visible[i] = false;
                     }
                 }
-
-                self.selected_mip = (0..MAX_MIPS)
-                    .find(|&i| self.mip_textures[i].is_some())
-                    .unwrap_or(0);
 
                 self.blp = Some(blp);
                 self.loading = false;

@@ -16,7 +16,6 @@ impl App {
 
         self.picked_file = Some(path.clone());
         self.blp = None;
-        self.selected_mip = 0;
         self.mip_textures.fill_with(|| None);
 
         let (tx, rx) = mpsc::sync_channel(1);

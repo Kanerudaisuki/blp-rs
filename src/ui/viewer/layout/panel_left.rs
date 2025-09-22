@@ -1,9 +1,9 @@
 use crate::err::error::BlpError;
-use crate::export::export_blp::export_blp;
-use crate::export::export_png::export_png;
+use crate::export::png::export_png;
 use crate::ui::viewer::app::App;
+use crate::ui::viewer::layout::file_saver::export_quality::export_quality_save;
 use crate::ui::viewer::layout::file_saver::save_same_dir::save_same_dir_save;
-use eframe::egui::{Button, Context, CursorIcon, Frame, Margin, ScrollArea, Sense, SidePanel, vec2};
+use eframe::egui::{Button, Context, CursorIcon, Frame, Label, Margin, RichText, ScrollArea, Sense, SidePanel, Slider, vec2};
 
 impl App {
     fn default_names(&self) -> (String, String) {
@@ -69,12 +69,9 @@ impl App {
                                 }
                             });
 
-                            ui.add_space(ui.spacing().item_spacing.y);
-
-                            let full_width = ui.available_width();
-
                             // ------- Кнопки сохранения с тултипом конечного пути -------
                             ui.add_enabled_ui(!self.loading, |ui| {
+                                let full_width = ui.available_width();
                                 // Save as BLP…
                                 let (def_blp, _) = self.default_names();
                                 let blp_preview = self.preview_save_path(&def_blp, "blp");
@@ -87,7 +84,9 @@ impl App {
                                     .clicked()
                                 {
                                     if let Some(path) = self.pick_save_path(&def_blp, "blp", self.tr("blp-texture")) {
-                                        self.run_export(|img| export_blp(img, &path, 100));
+                                        let export_quality = self.export_quality;
+                                        let mip_visible = self.mip_visible;
+                                        self.run_export(|img| img.export_blp(&path, export_quality, &mip_visible));
                                     }
                                 }
 
@@ -107,6 +106,35 @@ impl App {
                                     }
                                 }
                             });
+
+                            ui.add_space(ui.spacing().item_spacing.y);
+
+                            let quality_label = self.tr("blp-quality");
+                            ui.add(Label::new(quality_label).wrap());
+
+                            let quality_hint = self.tr("blp-quality-hint");
+                            const VALUE_WIDTH: f32 = 44.0;
+                            let slider_width = (ui.available_width() - VALUE_WIDTH - ui.spacing().item_spacing.x).max(0.0);
+                            let mut slider_changed = false;
+                            ui.horizontal(|ui| {
+                                let slider_scope = ui.scope(|ui| {
+                                    ui.set_width(slider_width);
+                                    ui.spacing_mut().slider_width = slider_width;
+                                    ui.add(Slider::new(&mut self.export_quality, 0..=100).show_value(false))
+                                });
+                                let slider_resp = slider_scope
+                                    .inner
+                                    .on_hover_text(quality_hint.clone());
+                                if slider_resp.changed() {
+                                    slider_changed = true;
+                                }
+
+                                let value_text = format!("{:>3}", self.export_quality);
+                                ui.add_sized([VALUE_WIDTH, 0.0], Label::new(RichText::new(value_text).monospace()).wrap());
+                            });
+                            if slider_changed {
+                                let _ = export_quality_save(self.export_quality);
+                            }
                         });
 
                         let _ = ui.allocate_exact_size(vec2(ui.available_width(), 0.0), Sense::hover());

@@ -1,9 +1,10 @@
+use crate::err::error::BlpError;
 use crate::ui::viewer::app::App;
 use eframe::egui::{ViewportBuilder, vec2};
 use eframe::{NativeOptions, Renderer};
 use std::path::PathBuf;
 
-pub fn run_native(path: Option<PathBuf>) {
+pub fn run_native(path: Option<PathBuf>) -> Result<(), BlpError> {
     eframe::run_native(
         "blp-rs",
         NativeOptions {
@@ -28,5 +29,5 @@ pub fn run_native(path: Option<PathBuf>) {
             Ok(Box::new(app))
         }),
     )
-    .expect("Failed to run eframe.");
+    .map_err(|err| BlpError::new("ui-run-native").with_arg("msg", err.to_string()))
 }

@@ -41,6 +41,9 @@ mips-all = All
 mips-none = None
 hint-mips-all = Enable all mip levels
 hint-mips-none = Disable all mip levels
+blp-quality = BLP quality
+blp-quality-hint = JPEG quality used when exporting BLP textures
+no-visible-mip-hint = No mip level is selected. Use the right panel to choose one.
 
 blp-texture = BLP texture
 png-image = PNG image
@@ -64,4 +67,3 @@ error-clipboard-init-failed = Failed to access clipboard.
 error-clipboard-no-image = No image found in clipboard.
 error-clipboard-invalid-buffer = Invalid clipboard image buffer (width={ $width }, height={ $height }).
 error-clipboard-encode-png-failed = Failed to encode PNG from clipboard image.
-

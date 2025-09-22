@@ -1,5 +1,5 @@
 use crate::err::error::BlpError;
-use crate::export::export_png::export_png;
+use crate::export::png::export_png;
 use crate::image_blp::ImageBlp;
 use crate::util::resolve_output_path::resolve_output_path;
 use std::fs;

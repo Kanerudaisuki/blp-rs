@@ -2,25 +2,27 @@
 use brotli::CompressorWriter;
 use std::{
     env, fs,
-    io::{BufReader, Read, Write},
+    io::{self, BufReader, Read, Write},
     path::{Path, PathBuf},
     time::{Instant, SystemTime},
 };
 
+type BuildResult<T> = Result<T, Box<dyn std::error::Error>>;
+
 /// Точка входа из build.rs
-pub fn run_fonts() {
+pub fn run_fonts() -> BuildResult<()> {
     let fonts_root = Path::new("assets/fonts"); // <-- твои шрифты теперь здесь
     println!("cargo:rerun-if-changed={}", fonts_root.display());
 
-    let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not set"));
-    fs::create_dir_all(&out_dir).expect("mkdir OUT_DIR");
+    let out_dir = PathBuf::from(env::var("OUT_DIR")?);
+    fs::create_dir_all(&out_dir)?;
 
     let mut items: Vec<(String, String)> = Vec::new();
 
     if !fonts_root.exists() {
         println!("⚠️ {} не существует — шрифты не вшиты", fonts_root.display());
-        generate_fonts_rs(&out_dir, &items);
-        return;
+        generate_fonts_rs(&out_dir, &items)?;
+        return Ok(());
     }
 
     // Настройки через окружение
@@ -37,8 +39,9 @@ pub fn run_fonts() {
     let mut files: Vec<PathBuf> = Vec::new();
     let mut stack = vec![fonts_root.to_path_buf()];
     while let Some(dir) = stack.pop() {
-        for ent in fs::read_dir(&dir).unwrap_or_else(|e| panic!("read_dir {}: {e}", dir.display())) {
-            let ent = ent.expect("dir entry");
+        let entries = fs::read_dir(&dir).map_err(|err| io::Error::new(err.kind(), format!("read_dir {}: {err}", dir.display())))?;
+        for ent in entries {
+            let ent = ent.map_err(|err| io::Error::new(err.kind(), format!("dir entry {}: {err}", dir.display())))?;
             let p = ent.path();
             if p.is_dir() {
                 stack.push(p);
@@ -52,16 +55,16 @@ pub fn run_fonts() {
     files.sort();
 
     for path in files {
-        let out_name = compress_to_br_no_progress(&path, &out_dir, quality, lgwin).unwrap_or_else(|e| panic!("compress {:?}: {e}", path));
-        let stem = path
+        let out_name = compress_to_br_no_progress(&path, &out_dir, quality, lgwin).map_err(|err| io::Error::new(err.kind(), format!("compress {}: {err}", path.display())))?;
+        let stem_os = path
             .file_stem()
-            .unwrap()
-            .to_string_lossy()
-            .into_owned();
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, format!("Font file {} has no stem", path.display())))?;
+        let stem = stem_os.to_string_lossy().into_owned();
         items.push((stem, out_name));
     }
 
-    generate_fonts_rs(&out_dir, &items);
+    generate_fonts_rs(&out_dir, &items)?;
+    Ok(())
 }
 
 fn is_font_file(path: &Path) -> bool {
@@ -74,7 +77,7 @@ fn is_font_file(path: &Path) -> bool {
 fn compress_to_br_no_progress(src_path: &Path, out_dir: &Path, quality: u32, lgwin: u32) -> std::io::Result<String> {
     let stem = src_path
         .file_stem()
-        .unwrap()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, format!("Font file {} has no stem", src_path.display())))?
         .to_string_lossy()
         .into_owned();
     let ext = src_path
@@ -129,18 +132,12 @@ fn compress_to_br_no_progress(src_path: &Path, out_dir: &Path, quality: u32, lgw
         .unwrap_or(0);
     let ratio = out_size as f64 / total as f64;
 
-    println!(
-        "✅ {} → {} ({:.1} MiB → {:.1} MiB, ratio {:.2}x) за {:.2}s",
-        src_path
-            .file_name()
-            .unwrap()
-            .to_string_lossy(),
-        out_name,
-        total as f64 / (1024.0 * 1024.0),
-        out_size as f64 / (1024.0 * 1024.0),
-        ratio,
-        secs
-    );
+    let file_name = src_path
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| String::from("<?>"));
+
+    println!("✅ {} → {} ({:.1} MiB → {:.1} MiB, ratio {:.2}x) за {:.2}s", file_name, out_name, total as f64 / (1024.0 * 1024.0), out_size as f64 / (1024.0 * 1024.0), ratio, secs);
 
     Ok(out_name)
 }
@@ -154,12 +151,13 @@ fn mtime_opt(p: &Path) -> std::io::Result<Option<SystemTime>> {
         .ok())
 }
 
-fn generate_fonts_rs(out_dir: &Path, items: &[(String, String)]) {
+fn generate_fonts_rs(out_dir: &Path, items: &[(String, String)]) -> BuildResult<()> {
     let mut gens = String::from("/* @generated: do not edit */\n");
     gens.push_str("pub fn all_fonts_br() -> &'static [(&'static str, &'static [u8])] { &[\n");
     for (stem, out_name) in items {
         gens.push_str(&format!("  (\"{}\", include_bytes!(concat!(env!(\"OUT_DIR\"), \"/{}\"))),\n", stem, out_name));
     }
     gens.push_str("] }\n");
-    fs::write(out_dir.join("fonts_gen.rs"), gens).expect("write fonts_gen.rs");
+    fs::write(out_dir.join("fonts_gen.rs"), gens)?;
+    Ok(())
 }

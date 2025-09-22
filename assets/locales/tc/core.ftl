@@ -41,6 +41,9 @@ mips-all = 全部
 mips-none = 無
 hint-mips-all = 啟用所有 mip 級別
 hint-mips-none = 停用所有 mip 級別
+blp-quality = BLP 匯出品質
+blp-quality-hint = 匯出 BLP 時使用的 JPEG 品質
+no-visible-mip-hint = 目前沒有選擇任何 mip 級別。請使用右側面板進行選擇。
 
 blp-texture = BLP 紋理
 png-image = PNG 影像
@@ -64,5 +67,3 @@ error-clipboard-init-failed = 無法存取剪貼簿。
 error-clipboard-no-image = 剪貼簿中未找到影像。
 error-clipboard-invalid-buffer = 剪貼簿影像緩衝區無效 (寬度={ $width }, 高度={ $height })。
 error-clipboard-encode-png-failed = 從剪貼簿影像編碼 PNG 失敗。
-
-

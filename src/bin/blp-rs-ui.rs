@@ -3,5 +3,8 @@
 use blp_rs::run::run;
 
 fn main() {
-    run().expect("Run error");
+    if let Err(e) = run() {
+        eprintln!("{e}");
+        std::process::exit(1);
+    }
 }

@@ -27,9 +27,10 @@ impl ImageBlp {
         let mut chain = Vec::with_capacity(16);
         chain.push(base.clone());
         while (w > 1 || h > 1) && chain.len() < MAX_MIPS {
+            let Some(last) = chain.last() else { break };
             let nw = (w / 2).max(1);
             let nh = (h / 2).max(1);
-            let next = resize(chain.last().unwrap(), nw, nh, FilterType::Triangle);
+            let next = resize(last, nw, nh, FilterType::Triangle);
             chain.push(next);
             w = nw;
             h = nh;
@@ -50,6 +51,14 @@ impl ImageBlp {
             mipmaps.push(Mipmap::default());
         }
 
-        Ok(ImageBlp { header: Header { width: base_w, height: base_h, ..Default::default() }, mipmaps, holes: 0 })
+        Ok(ImageBlp {
+            header: Header {
+                width: base_w, //
+                height: base_h,
+                ..Default::default()
+            },
+            mipmaps,
+            ..Default::default()
+        })
     }
 }

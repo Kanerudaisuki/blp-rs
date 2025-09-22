@@ -1,2 +1,2 @@
-pub mod export_blp;
-pub mod export_png;
+pub mod blp;
+pub mod png;

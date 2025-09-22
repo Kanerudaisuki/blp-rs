@@ -1,16 +1,18 @@
 // build/icons.rs
 use std::{
     fs,
-    io::Write,
+    io::{self, Write},
     path::{Path, PathBuf},
 };
 
-pub fn run_icons() {
+type BuildResult<T> = Result<T, Box<dyn std::error::Error>>;
+
+pub fn run_icons() -> BuildResult<()> {
     println!("cargo:rerun-if-changed=assets/icon.png");
 
     let src_icon = Path::new("assets/icon.png");
     if !src_icon.exists() {
-        return;
+        return Ok(());
     }
 
     let out_dir = Path::new("assets/generated");
@@ -50,38 +52,45 @@ pub fn run_icons() {
     }
 
     if !needs_generation {
-        return;
+        return Ok(());
     }
 
-    fs::create_dir_all(out_dir).expect("mkdir assets/generated");
+    fs::create_dir_all(out_dir)?;
 
     // Загружаем исходный PNG
-    let img = image::load_from_memory(&fs::read(src_icon).expect("read icon.png"))
-        .expect("decode icon.png")
+    let data = fs::read(src_icon).map_err(|err| io::Error::new(err.kind(), format!("read {}: {err}", src_icon.display())))?;
+    let img = image::load_from_memory(&data)
+        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, format!("decode {}: {err}", src_icon.display())))?
         .to_rgba8();
     let (w, h) = (img.width(), img.height());
-    assert_eq!(w, h, "icon.png должен быть квадратным (512×512 или 1024×1024)");
+    if w != h {
+        return Err(io::Error::new(io::ErrorKind::InvalidData, format!("icon.png должен быть квадратным (512×512 или 1024×1024), сейчас {w}x{h}")).into());
+    }
 
-    generate_ico(out_dir, &img, win_sizes);
-    generate_icns(out_dir, &img, mac_bases);
-    generate_linux_hicolor(out_dir, &img, lin_sizes);
+    generate_ico(out_dir, &img, win_sizes)?;
+    generate_icns(out_dir, &img, mac_bases)?;
+    generate_linux_hicolor(out_dir, &img, lin_sizes)?;
     // embed_windows_resources(out_dir); // опционально
+    Ok(())
 }
 
-pub fn generate_ico(out_dir: &Path, img: &image::RgbaImage, sizes: &[u32]) {
+pub fn generate_ico(out_dir: &Path, img: &image::RgbaImage, sizes: &[u32]) -> BuildResult<()> {
     use ico::{IconDir, IconImage, ResourceType};
     let mut dir = IconDir::new(ResourceType::Icon);
     for &s in sizes {
         let resized = image::imageops::resize(img, s, s, image::imageops::FilterType::Lanczos3);
         let ii = IconImage::from_rgba_data(s, s, resized.into_raw());
-        dir.add_entry(ico::IconDirEntry::encode(&ii).expect("encode ico"));
+        let entry = ico::IconDirEntry::encode(&ii).map_err(|err| io::Error::new(io::ErrorKind::Other, format!("encode ico {s}px: {err}")))?;
+        dir.add_entry(entry);
     }
-    let mut f = fs::File::create(out_dir.join("app.ico")).expect("create app.ico");
+    let path = out_dir.join("app.ico");
+    let mut f = fs::File::create(&path).map_err(|err| io::Error::new(err.kind(), format!("create {}: {err}", path.display())))?;
     dir.write(&mut f)
-        .expect("write app.ico");
+        .map_err(|err| io::Error::new(io::ErrorKind::Other, format!("write {}: {err}", path.display())))?;
+    Ok(())
 }
 
-pub fn generate_icns(out_dir: &Path, img: &image::RgbaImage, bases: &[u32]) {
+pub fn generate_icns(out_dir: &Path, img: &image::RgbaImage, bases: &[u32]) -> BuildResult<()> {
     use icns::{IconFamily, IconType, Image as IcnsImage, PixelFormat};
 
     fn icns_types_for(base: u32) -> &'static [IconType] {
@@ -118,32 +127,35 @@ pub fn generate_icns(out_dir: &Path, img: &image::RgbaImage, bases: &[u32]) {
             let Some(px) = target_px(kind) else { continue };
             let resized = image::imageops::resize(img, px, px, image::imageops::FilterType::Lanczos3);
             let raw = resized.into_raw();
-            let icns_img = IcnsImage::from_data(PixelFormat::RGBA, px, px, raw).expect("icns Image::from_data");
+            let icns_img = IcnsImage::from_data(PixelFormat::RGBA, px, px, raw).map_err(|err| io::Error::new(io::ErrorKind::Other, format!("icns from data {px}px: {err}")))?;
             family
                 .add_icon_with_type(&icns_img, kind)
-                .expect("add icns slice");
+                .map_err(|err| io::Error::new(io::ErrorKind::Other, format!("add icns slice {px}px: {err}")))?;
         }
     }
-    let mut f = fs::File::create(out_dir.join("AppIcon.icns")).expect("create AppIcon.icns");
+    let path = out_dir.join("AppIcon.icns");
+    let mut f = fs::File::create(&path).map_err(|err| io::Error::new(err.kind(), format!("create {}: {err}", path.display())))?;
     family
         .write(&mut f)
-        .expect("write icns");
+        .map_err(|err| io::Error::new(io::ErrorKind::Other, format!("write {}: {err}", path.display())))?;
+    Ok(())
 }
 
-pub fn generate_linux_hicolor(out_dir: &Path, img: &image::RgbaImage, sizes: &[u32]) {
+pub fn generate_linux_hicolor(out_dir: &Path, img: &image::RgbaImage, sizes: &[u32]) -> BuildResult<()> {
     for &s in sizes {
         let resized = image::imageops::resize(img, s, s, image::imageops::FilterType::Lanczos3);
         let dir = out_dir.join(format!("icons/hicolor/{}x{}/apps", s, s));
-        fs::create_dir_all(&dir).expect("mkdir -p hicolor/apps");
+        fs::create_dir_all(&dir)?;
         let path = dir.join("blp-rs.png");
-        let mut f = fs::File::create(&path).expect("create hicolor png");
+        let mut f = fs::File::create(&path).map_err(|err| io::Error::new(err.kind(), format!("create {}: {err}", path.display())))?;
         let mut buf = Vec::new();
         image::DynamicImage::ImageRgba8(resized)
             .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png)
-            .expect("encode linux png");
+            .map_err(|err| io::Error::new(io::ErrorKind::Other, format!("encode {}: {err}", path.display())))?;
         f.write_all(&buf)
-            .expect("write linux png");
+            .map_err(|err| io::Error::new(err.kind(), format!("write {}: {err}", path.display())))?;
     }
+    Ok(())
 }
 
 #[allow(dead_code)]
@@ -151,13 +163,15 @@ pub fn embed_windows_resources(_out_dir: &Path) {
     #[cfg(windows)]
     {
         let mut res = winresource::WindowsResource::new();
-        res.set_icon(
-            _out_dir
-                .join("app.ico")
-                .to_str()
-                .unwrap(),
-        );
+        if let Some(path) = _out_dir.join("app.ico").to_str() {
+            res.set_icon(path);
+        } else {
+            eprintln!("app.ico path is not valid UTF-8; skipping Windows resource embedding");
+            return;
+        }
         res.set("AppUserModelID", "WarRaft.blp-rs");
-        let _ = res.compile();
+        if let Err(err) = res.compile() {
+            eprintln!("Failed to embed Windows resources: {err}");
+        }
     }
 }

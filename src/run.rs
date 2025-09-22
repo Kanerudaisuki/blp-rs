@@ -1,10 +1,21 @@
-use crate::cli::command::to_blp::to_blp;
-use crate::cli::command::to_png::to_png;
 use crate::err::error::BlpError;
-use crate::ui::viewer::run_native::run_native;
-use clap::{Parser, Subcommand, error::ErrorKind};
+
+#[cfg(any(feature = "cli", feature = "ui"))]
 use std::path::PathBuf;
 
+#[cfg(feature = "cli")]
+use crate::cli::command::to_blp::to_blp;
+#[cfg(feature = "cli")]
+use crate::cli::command::to_png::to_png;
+#[cfg(feature = "ui")]
+use crate::ui::viewer::run_native::run_native;
+
+#[cfg(all(feature = "cli", not(feature = "ui")))]
+use clap::CommandFactory;
+#[cfg(feature = "cli")]
+use clap::{Parser, Subcommand, error::ErrorKind};
+
+#[cfg(feature = "cli")]
 #[derive(Debug, Parser)]
 #[command(
     name = "blp-rs",
@@ -24,6 +35,7 @@ struct Cli {
     command: Option<Command>,
 }
 
+#[cfg(feature = "cli")]
 #[derive(Debug, Subcommand)]
 enum Command {
     /// Convert an image into BLP format
@@ -43,6 +55,7 @@ enum Command {
     },
 }
 
+#[cfg(all(feature = "cli", feature = "ui"))]
 pub fn run() -> Result<(), BlpError> {
     match Cli::try_parse() {
         Ok(cli) => {
@@ -57,7 +70,7 @@ pub fn run() -> Result<(), BlpError> {
                 }
             } else {
                 // Нет подкоманды → GUI режим. path приходит из “Open With…”
-                run_native(cli.path);
+                run_native(cli.path)?;
             }
             Ok(())
         }
@@ -72,4 +85,51 @@ pub fn run() -> Result<(), BlpError> {
             }
         },
     }
+}
+
+#[cfg(all(feature = "cli", not(feature = "ui")))]
+pub fn run() -> Result<(), BlpError> {
+    match Cli::try_parse() {
+        Ok(cli) => {
+            if let Some(cmd) = cli.command {
+                match cmd {
+                    Command::ToBlp { input, output } => {
+                        to_blp(&input, output.as_ref())?;
+                    }
+                    Command::ToPng { input, output } => {
+                        to_png(&input, output.as_ref())?;
+                    }
+                }
+                Ok(())
+            } else {
+                Cli::command()
+                    .error(ErrorKind::MissingSubcommand, "`ui` feature disabled; use a subcommand to run the CLI")
+                    .exit();
+            }
+        }
+        Err(e) => match e.kind() {
+            ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => {
+                e.print()?;
+                Ok(())
+            }
+            _ => {
+                e.print()?;
+                std::process::exit(e.exit_code());
+            }
+        },
+    }
+}
+
+#[cfg(all(not(feature = "cli"), feature = "ui"))]
+pub fn run() -> Result<(), BlpError> {
+    let path = std::env::args_os()
+        .nth(1)
+        .map(PathBuf::from);
+    run_native(path)?;
+    Ok(())
+}
+
+#[cfg(all(not(feature = "cli"), not(feature = "ui")))]
+pub fn run() -> Result<(), BlpError> {
+    Err(BlpError::new("runtime-features-disabled").with_arg("features", "cli, ui"))
 }

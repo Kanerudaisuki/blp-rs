@@ -1,5 +1,3 @@
-use crate::encode::blp::jpeg::build::build_sof0_sos_from_templates;
-use crate::encode::blp::jpeg::types::{PlanTemplate, extract_plan_template_from_common_header};
 use crate::err::error::BlpError;
 use crate::header::Header;
 use crate::image_blp::{ImageBlp, MAX_MIPS};
@@ -15,16 +13,9 @@ impl ImageBlp {
         let mut jpeg_header_chunk = vec![0u8; jpeg_header_size];
         cursor.read_exact(&mut jpeg_header_chunk)?;
 
-        let plan_template = extract_plan_template_from_common_header(&jpeg_header_chunk).unwrap_or_else(|e| {
-            eprintln!("[decode] failed to read JPEG plan from common header: {e}");
-            None
-        });
-
         for (idx, slice_opt) in slices.into_iter().enumerate() {
             if let Some(slice) = slice_opt {
-                let expected_width = (header.width >> idx).max(1);
-                let expected_height = (header.height >> idx).max(1);
-                let mipmap = Mipmap::decode_jpeg_inner(header, &jpeg_header_chunk, plan_template.as_ref(), slice, expected_width, expected_height).map_err(|e| {
+                let mipmap = Mipmap::decode_jpeg_inner(header, &jpeg_header_chunk, slice).map_err(|e| {
                     e.ctx("decode.jpeg.mip")
                         .with_arg("mip", idx as u32)
                         .with_arg("header_len", jpeg_header_chunk.len() as u32)
@@ -56,17 +47,10 @@ impl ImageBlp {
 }
 
 impl Mipmap {
-    pub fn decode_jpeg_inner(header: &Header, jpeg_header_chunk: &[u8], plan_template: Option<&PlanTemplate>, jpeg_chunk: &[u8], expected_width: u32, expected_height: u32) -> Result<Mipmap, BlpError> {
-        let mut full = Vec::with_capacity(jpeg_header_chunk.len() + jpeg_chunk.len() + if plan_template.is_some() { 32 } else { 0 });
+    pub fn decode_jpeg_inner(header: &Header, jpeg_header_chunk: &[u8], jpeg_chunk: &[u8]) -> Result<Mipmap, BlpError> {
+        let mut full = Vec::with_capacity(jpeg_header_chunk.len() + jpeg_chunk.len());
         full.extend_from_slice(jpeg_header_chunk);
-        if let Some(tpl) = plan_template {
-            let sof0_sos = build_sof0_sos_from_templates(&tpl.sof0, &tpl.sos, expected_width as u16, expected_height as u16)?;
-            full.extend_from_slice(&sof0_sos);
-            full.extend_from_slice(jpeg_chunk);
-            full.extend_from_slice(&[0xFF, 0xD9]);
-        } else {
-            full.extend_from_slice(jpeg_chunk);
-        }
+        full.extend_from_slice(jpeg_chunk);
 
         let mut dec = Decoder::new(Cursor::new(&full));
         dec.read_info()

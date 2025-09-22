@@ -1,5 +1,4 @@
 use crate::err::error::BlpError;
-use crate::export::export_blp::export_blp;
 use crate::image_blp::ImageBlp;
 use crate::util::resolve_output_path::resolve_output_path;
 use std::fs;
@@ -10,7 +9,7 @@ pub fn to_blp(input: &Path, output: Option<&PathBuf>) -> Result<(), BlpError> {
     let data = fs::read(input)?;
     let img = ImageBlp::from_buf(&data)?;
     let out_path = resolve_output_path(input, output, "blp");
-    export_blp(&img, &out_path, 100)?;
+    img.export_blp(&out_path, 100, &[])?;
     println!("Saved BLP → {}", out_path.display());
     Ok(())
 }

@@ -10,82 +10,104 @@ PROJECT_NAME="$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 
-# ===== macOS universal =====
-echo "📦 macOS universal…"
-rustup target add aarch64-apple-darwin x86_64-apple-darwin &>/dev/null || true
-cargo build --release --target aarch64-apple-darwin --bin "$BIN_NAME" --locked
-cargo build --release --target x86_64-apple-darwin --bin "$BIN_NAME" --locked
+build_variant() {
+  local bin_name="$1"
+  local feature_spec="$2"
+  local packaging="${3:-binary}"
+  local feature_label="${feature_spec:-none}"
+  local cargo_features=(--no-default-features)
+  if [[ -n "$feature_spec" && "$feature_spec" != "-" ]]; then
+    cargo_features+=(--features "$feature_spec")
+  fi
 
-MAC_UNI="$DIST_DIR/$PROJECT_NAME-macos"
-lipo -create \
-  -output "$MAC_UNI" \
-  "target/aarch64-apple-darwin/release/$BIN_NAME" \
-  "target/x86_64-apple-darwin/release/$BIN_NAME"
-chmod +x "$MAC_UNI"
-strip_safe "$MAC_UNI" macos
-file "$MAC_UNI"
+  echo "\n=== 🔨 Building $bin_name (features: $feature_label, packaging: $packaging) ==="
 
-# macOS .app -> zip + dmg
-APP_NAME="$PROJECT_NAME"
-APP_TMP="$(mktemp -d)/$APP_NAME-macos.app"
-APP_MACOS="$APP_TMP/Contents/MacOS"; APP_RES="$APP_TMP/Contents/Resources"
-mkdir -p "$APP_MACOS" "$APP_RES"
-cp "$MAC_UNI" "$APP_MACOS/$APP_NAME"; chmod +x "$APP_MACOS/$APP_NAME"
+  # ===== macOS universal =====
+  echo "📦 macOS universal…"
+  rustup target add aarch64-apple-darwin x86_64-apple-darwin &>/dev/null || true
+  cargo build --release --target aarch64-apple-darwin --bin "$bin_name" --locked "${cargo_features[@]}"
+  cargo build --release --target x86_64-apple-darwin --bin "$bin_name" --locked "${cargo_features[@]}"
 
-ICON_SRC="assets/generated/AppIcon.icns"; [[ -f "$ICON_SRC" ]] || ICON_SRC="assets/icon.icns"
-ICON_KEY=""
-if [[ -f "$ICON_SRC" ]]; then
-  cp "$ICON_SRC" "$APP_RES/app.icns"
-  ICON_KEY="<key>CFBundleIconFile</key><string>app</string>"
-else
-  echo "⚠️  icns не найден — .app без иконки"
-fi
+  local mac_uni="$DIST_DIR/${bin_name}-macos"
+  lipo -create \
+    -output "$mac_uni" \
+    "target/aarch64-apple-darwin/release/$bin_name" \
+    "target/x86_64-apple-darwin/release/$bin_name"
+  chmod +x "$mac_uni"
+  strip_safe "$mac_uni" macos
+  file "$mac_uni"
 
-# версия как плейсхолдер — реальную подставит build-publish
-cat > "$APP_TMP/Contents/Info.plist" <<PLIST
+  if [[ "$packaging" == "app" ]]; then
+    local app_name="$PROJECT_NAME"
+    local app_tmp="$(mktemp -d)/$app_name-macos.app"
+    local app_macos="$app_tmp/Contents/MacOS"
+    local app_res="$app_tmp/Contents/Resources"
+    mkdir -p "$app_macos" "$app_res"
+    cp "$mac_uni" "$app_macos/$app_name"; chmod +x "$app_macos/$app_name"
+
+    local icon_src="assets/generated/AppIcon.icns"
+    [[ -f "$icon_src" ]] || icon_src="assets/icon.icns"
+    local icon_key=""
+    if [[ -f "$icon_src" ]]; then
+      cp "$icon_src" "$app_res/app.icns"
+      icon_key="<key>CFBundleIconFile</key><string>app</string>"
+    else
+      echo "⚠️  icns не найден — .app без иконки"
+    fi
+
+    cat > "$app_tmp/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>CFBundleName</key>                <string>$APP_NAME</string>
+  <key>CFBundleName</key>                <string>$app_name</string>
   <key>CFBundleIdentifier</key>          <string>$APP_ID_BUNDLE.$PROJECT_NAME</string>
-  <key>CFBundleExecutable</key>          <string>$APP_NAME</string>
+  <key>CFBundleExecutable</key>          <string>$app_name</string>
   <key>CFBundlePackageType</key>         <string>APPL</string>
   <key>CFBundleShortVersionString</key>  <string>0.0.0</string>
   <key>CFBundleVersion</key>             <string>0.0.0</string>
   <key>LSMinimumSystemVersion</key>      <string>10.13</string>
   <key>NSHighResolutionCapable</key>     <true/>
-  $ICON_KEY
+  $icon_key
 </dict></plist>
 PLIST
 
-if command -v codesign &>/dev/null; then codesign --force --deep --sign - "$APP_TMP" || true; fi
-ZIP="$DIST_DIR/$PROJECT_NAME-macos.zip"
-/usr/bin/ditto -c -k --sequesterRsrc --keepParent "$APP_TMP" "$ZIP"
-DMG="$DIST_DIR/$PROJECT_NAME-macos.dmg"
-hdiutil create -quiet -fs HFS+ -imagekey zlib-level=9 -volname "$APP_NAME" -srcfolder "$APP_TMP" -ov -format UDZO "$DMG"
+    if command -v codesign &>/dev/null; then codesign --force --deep --sign - "$app_tmp" || true; fi
+    local zip_path="$DIST_DIR/${bin_name}-macos.zip"
+    /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$app_tmp" "$zip_path"
+    local dmg_path="$DIST_DIR/${bin_name}-macos.dmg"
+    hdiutil create -quiet -fs HFS+ -imagekey zlib-level=9 -volname "$app_name" -srcfolder "$app_tmp" -ov -format UDZO "$dmg_path"
+  fi
 
-# ===== Linux (musl) =====
-echo "🐧 Linux…"
-rustup target add x86_64-unknown-linux-musl &>/dev/null || true
-cargo build --release --target x86_64-unknown-linux-musl --bin "$BIN_NAME" --locked
-LIN_BIN="$DIST_DIR/$PROJECT_NAME-linux"
-cp "target/x86_64-unknown-linux-musl/release/$BIN_NAME" "$LIN_BIN"
-chmod +x "$LIN_BIN"
-strip_safe "$LIN_BIN" linux
-file "$LIN_BIN"
+  # ===== Linux (musl) =====
+  echo "🐧 Linux…"
+  rustup target add x86_64-unknown-linux-musl &>/dev/null || true
+  cargo build --release --target x86_64-unknown-linux-musl --bin "$bin_name" --locked "${cargo_features[@]}"
+  local lin_bin="$DIST_DIR/${bin_name}-linux"
+  cp "target/x86_64-unknown-linux-musl/release/$bin_name" "$lin_bin"
+  chmod +x "$lin_bin"
+  strip_safe "$lin_bin" linux
+  file "$lin_bin"
 
-# ===== Windows (gnu) =====
-echo "🪟 Windows…"
-rustup target add x86_64-pc-windows-gnu &>/dev/null || true
-cargo build --release --target x86_64-pc-windows-gnu --bin "$BIN_NAME" --locked
-WIN_EXE="$DIST_DIR/$PROJECT_NAME-windows.exe"
-cp "target/x86_64-pc-windows-gnu/release/$BIN_NAME.exe" "$WIN_EXE"
-strip_safe "$WIN_EXE" windows
-maybe_upx "$WIN_EXE"
-file "$WIN_EXE"
+  # ===== Windows (gnu) =====
+  echo "🪟 Windows…"
+  rustup target add x86_64-pc-windows-gnu &>/dev/null || true
+  cargo build --release --target x86_64-pc-windows-gnu --bin "$bin_name" --locked "${cargo_features[@]}"
+  local win_exe="$DIST_DIR/${bin_name}-windows.exe"
+  cp "target/x86_64-pc-windows-gnu/release/$bin_name.exe" "$win_exe"
+  strip_safe "$win_exe" windows
+  maybe_upx "$win_exe"
+  file "$win_exe"
+}
+
+while IFS= read -r spec; do
+  spec="${spec//$'\r'/}"
+  [[ -z "${spec//[[:space:]]/}" ]] && continue
+  IFS=':' read -r bin_name feature_spec packaging <<<"$spec"
+  build_variant "$bin_name" "$feature_spec" "$packaging"
+done <<<"$BUILD_VARIANTS"
 
 # --- checksums ---
-echo "🔐 Checksums…"
+echo "\n🔐 Checksums…"
 (
   cd "$DIST_DIR"
   rm -f SHA256SUMS.txt

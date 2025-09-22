@@ -135,16 +135,16 @@ fn app_send_paste() {
 // class helpers
 
 #[inline]
-fn class_get_or_register() -> &'static Class {
+fn class_get_or_register() -> Option<&'static Class> {
     unsafe {
         if let Some(cls) = Class::get("RustPasteTarget") {
-            return cls;
+            return Some(cls);
         }
         let superclass = class!(NSObject);
-        let mut decl = ClassDecl::new("RustPasteTarget", superclass).unwrap();
+        let mut decl = ClassDecl::new("RustPasteTarget", superclass)?;
         decl.add_method(sel!(pasteCmdV:), paste_cmdv as extern "C" fn(&Object, Sel, id));
         decl.add_method(sel!(validateMenuItem:), validate_menu_item as extern "C" fn(&Object, Sel, id) -> bool);
-        decl.register()
+        Some(decl.register())
     }
 }
 
@@ -242,7 +242,7 @@ extern "C" fn validate_menu_item(_this: &Object, _cmd: Sel, _item: id) -> bool {
     true
 }
 
-fn ensure_target_class() -> &'static Class {
+fn ensure_target_class() -> Option<&'static Class> {
     class_get_or_register()
 }
 
@@ -275,7 +275,9 @@ unsafe fn hook_or_create_paste_item() -> bool {
             let eq = menu_item_key_equivalent(it);
             let mask = menu_item_modifier_mask(it);
             if eq == "v" && mask.contains(NSEventModifierFlags::NSCommandKeyMask) {
-                let cls = ensure_target_class();
+                let Some(cls) = ensure_target_class() else {
+                    return false;
+                };
                 let target: id = msg_send![cls, new];
                 menu_item_set_action(it, sel!(pasteCmdV:));
                 menu_item_set_target(it, target);
@@ -333,7 +335,9 @@ unsafe fn hook_or_create_paste_item() -> bool {
     let paste = menu_item_with_title_action_key("Paste", sel!(pasteCmdV:), "v");
     menu_item_set_key_mask(paste, NSEventModifierFlags::NSCommandKeyMask);
 
-    let cls = ensure_target_class();
+    let Some(cls) = ensure_target_class() else {
+        return false;
+    };
     let target: id = msg_send![cls, new];
     menu_item_set_target(paste, target);
     menu_add_item(edit_sub, paste);
