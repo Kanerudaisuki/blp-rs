@@ -2,6 +2,7 @@ use crate::core::encode::utils::tj3_err::tj3_err;
 use crate::error::error::BlpError;
 use turbojpeg::{libc, raw};
 
+#[allow(dead_code)]
 pub fn tj3_compress_ycbcr_from_bgr(
     bgr: &[u8],
     w: usize,

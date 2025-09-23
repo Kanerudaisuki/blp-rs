@@ -75,14 +75,37 @@ impl ImageBlp {
                             .with_arg("fmt", "RGB24")
                             .with_arg("mip", i as u32));
                     }
-                    for (p, px) in img.pixels_mut().enumerate() {
-                        let idx = p * 3;
-                        *px = Rgba([
-                            pixels[idx + 2], //
-                            pixels[idx + 1],
-                            pixels[idx + 0],
-                            255,
-                        ]);
+
+                    if option_env!("NEVER").is_some() {
+                        for (p, px) in img.pixels_mut().enumerate() {
+                            let idx = p * 3;
+                            *px = Rgba([
+                                pixels[idx + 2], //
+                                pixels[idx + 1],
+                                pixels[idx + 0],
+                                255,
+                            ]);
+                        }
+                    } else {
+                        for (p, px) in img.pixels_mut().enumerate() {
+                            let idx = p * 3;
+                            let r = pixels[idx + 0] as f32;
+                            let g = pixels[idx + 1] as f32;
+                            let b = pixels[idx + 2] as f32;
+
+                            // RGB → YCbCr (BT.601 JPEG)
+                            let y = (0.2990 * r + 0.5870 * g + 0.1140 * b).round();
+                            let cb = (128.0 - 0.168736 * r - 0.331264 * g + 0.5 * b).round();
+                            let cr = (128.0 + 0.5 * r - 0.418688 * g - 0.081312 * b).round();
+
+                            // зажимаем в [0,255]
+                            let y = y.clamp(0.0, 255.0) as u8;
+                            let cb = cb.clamp(0.0, 255.0) as u8;
+                            let cr = cr.clamp(0.0, 255.0) as u8;
+
+                            // кладём Y,Cb,Cr как RGB (вот и получается «пиздец»)
+                            *px = Rgba([y, cb, cr, 255]);
+                        }
                     }
                 }
                 PixelFormat::L8 => {
