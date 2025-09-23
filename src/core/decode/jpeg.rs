@@ -50,6 +50,8 @@ impl ImageBlp {
             let mut img = RgbaImage::new(w, h);
             let force_opaque = self.alpha_bits == 0;
 
+            println!("info.pixel_format {:?}", info.pixel_format);
+
             match info.pixel_format {
                 PixelFormat::CMYK32 => {
                     if pixels.len() != (w as usize * h as usize * 4) {
@@ -75,7 +77,12 @@ impl ImageBlp {
                     }
                     for (p, px) in img.pixels_mut().enumerate() {
                         let idx = p * 3;
-                        *px = Rgba([pixels[idx], pixels[idx + 1], pixels[idx + 2], 255]);
+                        *px = Rgba([
+                            pixels[idx + 2], //
+                            pixels[idx + 1],
+                            pixels[idx + 0],
+                            255,
+                        ]);
                     }
                 }
                 PixelFormat::L8 => {

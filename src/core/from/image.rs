@@ -1,5 +1,6 @@
 use crate::core::image::{ImageBlp, MAX_MIPS};
 use crate::core::mipmap::Mipmap;
+use crate::core::types::SourceKind;
 use crate::error::error::BlpError;
 use image;
 use image::GenericImageView;
@@ -102,10 +103,10 @@ impl ImageBlp {
         }
 
         Ok(ImageBlp {
-            width: base_w,
+            width: base_w, //
             height: base_h,
             mipmaps,
-            // …остальные поля по умолчанию / твои значения
+            source: SourceKind::Image,
             ..Default::default()
         })
     }

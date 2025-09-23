@@ -6,4 +6,3 @@ mod ext;
 pub mod run;
 #[cfg(feature = "ui")]
 pub mod ui;
-mod util;

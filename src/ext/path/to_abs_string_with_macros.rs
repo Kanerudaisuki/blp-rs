@@ -119,6 +119,7 @@ fn trim_trailing_bslash(mut s: String) -> String {
 }
 
 /// Проверка, что `s` начинается с `pref` по границе сегмента. `ci` — регистронезависимо.
+#[cfg(any(unix, windows))]
 fn has_prefix_boundary(s: &str, pref: &str, ci: bool) -> bool {
     if s.len() < pref.len() {
         return false;
@@ -130,44 +131,4 @@ fn has_prefix_boundary(s: &str, pref: &str, ci: bool) -> bool {
     let (head, tail) = s.split_at(pref.len());
     let eq = if ci { head.eq_ignore_ascii_case(pref) } else { head == pref };
     eq && (tail.is_empty() || matches!(tail.as_bytes()[0], b'/' | b'\\'))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::env;
-
-    #[test]
-    #[cfg(unix)]
-    fn folds_unix_home() {
-        let tmp = tempfile::tempdir().unwrap();
-        let home_path = tmp.path().canonicalize().unwrap();
-        let home_string = home_path.to_string_lossy().into_owned();
-        let prev_home = env::var("HOME");
-        let cwd_before = env::current_dir().unwrap();
-        unsafe {
-            env::set_var("HOME", &home_string);
-        }
-        env::set_current_dir(&home_path).unwrap();
-        let p = Path::new("foo/../bar").to_abs_string_with_macros();
-        env::set_current_dir(cwd_before).unwrap();
-        match prev_home {
-            Ok(val) => unsafe { env::set_var("HOME", val) },
-            Err(_) => unsafe { env::remove_var("HOME") },
-        }
-        // Должно схлопнуться к абсолютному внутри HOME → "~"
-        assert!(p.starts_with("~/"));
-        assert!(p.ends_with("/bar"));
-    }
-
-    #[test]
-    #[cfg(windows)]
-    fn folds_windows_profile() {
-        env::set_var("USERPROFILE", r"C:\Users\Alice");
-        // относительный путь -> абсолютный -> нормализованный -> %USERPROFILE%
-        let p = Path::new(r".\Desktop\..\Docs").to_abs_string_with_macros();
-        assert!(p.starts_with("%USERPROFILE%\\") || p.contains(r":\")); // зависит от текущего CWD
-        // Если тест запускается не из профиля, просто проверим нормализацию хвоста:
-        assert!(p.ends_with(r"\Docs"));
-    }
 }

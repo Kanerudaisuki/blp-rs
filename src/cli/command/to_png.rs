@@ -1,6 +1,5 @@
 use crate::core::image::ImageBlp;
 use crate::error::error::BlpError;
-use crate::util::resolve_output_path::resolve_output_path;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -10,7 +9,11 @@ pub fn to_png(input: &Path, output: Option<&PathBuf>) -> Result<(), BlpError> {
     let mut img = ImageBlp::from_buf(&data).map_err(|e| e.ctx("blp.decode-failed"))?;
     img.decode(&data)?;
 
-    let out_path = resolve_output_path(input, output, "png");
+    let out_path: PathBuf = match output {
+        Some(p) => p.clone(),
+        None => input.with_extension("png"),
+    };
+
     img.export_png(img.mipmaps.get(0).unwrap(), &out_path)?;
     println!("Saved PNG → {}", out_path.display());
     Ok(())
