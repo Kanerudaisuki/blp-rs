@@ -13,6 +13,7 @@ exclude = [
     "preview/*",
     "target/*",
     "test-data/*",
+    "assets/fonts/*",
     "*.sh",
 ]
 
