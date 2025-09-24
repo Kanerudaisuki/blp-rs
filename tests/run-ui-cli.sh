@@ -12,6 +12,6 @@ if [[ $# -eq 0 ]]; then
 fi
 
 cargo run --release \
-  --bin blp-rs-ui \
+  --bin blp-ui \
   --features "cli ui" \
   -- "$@"

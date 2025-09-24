@@ -3,8 +3,8 @@
 
 #[cfg(test)]
 pub mod to_blp {
-    use blp_rs::core::image::ImageBlp;
-    use blp_rs::error::error::BlpError;
+    use blp::core::image::ImageBlp;
+    use blp::error::error::BlpError;
     use std::fs;
     use std::panic::{AssertUnwindSafe, catch_unwind};
     use std::path::{Path, PathBuf};
@@ -46,7 +46,7 @@ pub mod to_blp {
             .arg("run")
             .arg("--release")
             .arg("--bin")
-            .arg("blp-rs-ui")
+            .arg("blp-ui")
             .arg("--features")
             .arg("cli ui")
             .arg("--")

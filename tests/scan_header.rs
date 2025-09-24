@@ -4,8 +4,8 @@ mod scan_header {
     use std::path::Path;
     use walkdir::WalkDir;
 
-    use blp_rs::core::image::ImageBlp;
-    use blp_rs::core::types::TextureType;
+    use blp::core::image::ImageBlp;
+    use blp::core::types::TextureType;
 
     const DEST_DIR: &str = "/Users/nazarpunk/IdeaProjects/War3.mpq/extract";
     const OUT_DIR: &str = "test-data/scan";

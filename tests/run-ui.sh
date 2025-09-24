@@ -14,5 +14,5 @@ if [[ ${#ARGS[@]} -eq 0 ]]; then
     ARGS=("${DEFAULT_INPUT}")
 fi
 
-cargo run --release --bin blp-rs-ui --features "cli ui" -- "${ARGS[@]}"
-#cargo run --release --bin blp-rs-ui --features "cli ui"
+cargo run --release --bin blp-ui --features "cli ui" -- "${ARGS[@]}"
+#cargo run --release --bin blp-ui --features "cli ui"

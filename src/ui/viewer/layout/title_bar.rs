@@ -10,8 +10,8 @@ impl App {
             .show(ctx, |ui| {
                 let title_bar_rect = ui.max_rect();
 
-                // --- ЛЕВЫЙ БЕЙДЖ "blp-rs" со скошенным правым краем ---
-                let label_text = "blp-rs";
+                // --- ЛЕВЫЙ БЕЙДЖ "blp" со скошенным правым краем ---
+                let label_text = "blp";
                 let font = FontId::proportional(16.0);
                 let galley = ui.fonts(|f| f.layout_no_wrap(label_text.to_string(), font.clone(), Color32::WHITE));
 
@@ -51,7 +51,7 @@ impl App {
 
                 let ver_gap = 6.0; // зазор между бейджами
                 let ver_text_pos = Pos2::new(
-                    x1 + ver_gap, // начинаем после "blp-rs"
+                    x1 + ver_gap, // начинаем после "blp"
                     title_bar_rect.center().y - ver_galley.size().y * 0.5,
                 );
 

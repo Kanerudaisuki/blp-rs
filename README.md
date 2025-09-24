@@ -1,4 +1,4 @@
-# blp-rs
+# blp
 
 This is a pure Rust take on the classic Warcraft III BLP texture format.  
 No C glue, no old-school wrappers — just clean Rust that works everywhere: Windows, macOS, Linux.
@@ -24,5 +24,5 @@ It is **not required** to translate every key: any missing strings will automati
 
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/WarRaft/blp-rs/refs/heads/main/preview/logo.png" alt="BLP"/>
+  <img src="https://raw.githubusercontent.com/WarRaft/blp/refs/heads/main/preview/logo.png" alt="BLP"/>
 </p>

@@ -11,4 +11,4 @@ if [[ $# -eq 0 ]]; then
   set -- --help
 fi
 
-cargo run --release --bin blp-rs-cli --features "cli" -- "$@"
+cargo run --release --bin blp-cli --features "cli" -- "$@"

@@ -5,7 +5,7 @@ set -euo pipefail
 
 # ====== SETTINGS ======
 export DIST_DIR="${DIST_DIR:-bin}"
-export BUILD_VARIANTS="${BUILD_VARIANTS:-$'blp-rs-cli:cli:binary\nblp-rs-ui:cli,ui:app'}"
+export BUILD_VARIANTS="${BUILD_VARIANTS:-$'blp-cli:cli:binary\nblp-ui:cli,ui:app'}"
 export APP_ID_BUNDLE="${APP_ID_BUNDLE:-com.blp}"
 export UPX="${UPX:-0}"
 # ======================

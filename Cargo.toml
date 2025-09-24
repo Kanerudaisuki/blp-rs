@@ -1,9 +1,18 @@
 [package]
-name = "blp-rs"
-version = "0.1.17"
+name = "blp"
+description = "Blizzard BLP image format reader/writer (Warcraft/World of Warcraft textures)"
 authors = ["nazarpunk <nazarpunk@gmail.com>"]
+version = "0.1.17"
 repository = "https://github.com/WarRaft/blp-rs"
 edition = "2024"
+license = "MIT"
+readme = "README.md"
+keywords = ["blp", "warcraft", "image", "texture"]
+categories = ["encoding", "graphics"]
+exclude = [
+    "preview/*",
+    "*.sh",
+]
 
 [dependencies]
 arboard = { version = "3.6.1", optional = true }
@@ -30,21 +39,21 @@ turbojpeg = "1.3.3"
 walkdir = "2.5.0"
 
 [[bin]]
-name = "blp-rs-cli"
-path = "src/bin/blp-rs-cli.rs"
+name = "blp-cli"
+path = "src/bin/blp-cli.rs"
 required-features = ["cli"]
 
 [[bin]]
-name = "blp-rs-ui"
-path = "src/bin/blp-rs-ui.rs"
+name = "blp-ui"
+path = "src/bin/blp-ui.rs"
 required-features = ["cli", "ui"]
 
 [lib]
-name = "blp_rs"
+name = "blp"
 path = "src/lib.rs"
 
 [package.metadata.bundle]
-name = "blp-rs"
+name = "blp"
 identifier = "com.warraft.blprs"
 category = "public.app-category.developer-tools"
 short_description = "BLP viewer/encoder"

@@ -1,4 +1,4 @@
-use blp_rs::run::run;
+use blp::run::run;
 
 fn main() {
     if let Err(e) = run() {

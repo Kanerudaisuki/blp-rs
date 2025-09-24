@@ -6,12 +6,12 @@ use std::path::PathBuf;
 
 pub fn run_native(path: Option<PathBuf>) -> Result<(), BlpError> {
     eframe::run_native(
-        "blp-rs",
+        "blp",
         NativeOptions {
             persist_window: true,
             viewport: ViewportBuilder {
-                title: Some("blp-rs".to_string()), //
-                app_id: Some("org.warraft.blp-rs".to_string()),
+                title: Some("blp".to_string()), //
+                app_id: Some("org.warraft.blp".to_string()),
                 inner_size: Some(vec2(800.0, 680.0)),
                 clamp_size_to_monitor_size: Some(true),
                 decorations: Some(false),

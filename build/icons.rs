@@ -26,7 +26,7 @@ pub fn run_icons() -> BuildResult<()> {
     expected_outputs.extend(
         lin_sizes
             .iter()
-            .map(|s| out_dir.join(format!("icons/hicolor/{}x{}/apps/blp-rs.png", s, s))),
+            .map(|s| out_dir.join(format!("icons/hicolor/{}x{}/apps/blp.png", s, s))),
     );
 
     let src_modified = fs::metadata(src_icon)
@@ -146,7 +146,7 @@ pub fn generate_linux_hicolor(out_dir: &Path, img: &image::RgbaImage, sizes: &[u
         let resized = image::imageops::resize(img, s, s, image::imageops::FilterType::Lanczos3);
         let dir = out_dir.join(format!("icons/hicolor/{}x{}/apps", s, s));
         fs::create_dir_all(&dir)?;
-        let path = dir.join("blp-rs.png");
+        let path = dir.join("blp.png");
         let mut f = fs::File::create(&path).map_err(|err| io::Error::new(err.kind(), format!("create {}: {err}", path.display())))?;
         let mut buf = Vec::new();
         image::DynamicImage::ImageRgba8(resized)
@@ -169,7 +169,7 @@ pub fn embed_windows_resources(_out_dir: &Path) {
             eprintln!("app.ico path is not valid UTF-8; skipping Windows resource embedding");
             return;
         }
-        res.set("AppUserModelID", "WarRaft.blp-rs");
+        res.set("AppUserModelID", "WarRaft.blp");
         if let Err(err) = res.compile() {
             eprintln!("Failed to embed Windows resources: {err}");
         }

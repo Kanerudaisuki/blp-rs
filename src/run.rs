@@ -44,11 +44,11 @@ enum Command {
 #[cfg(all(feature = "cli", not(feature = "ui")))]
 #[derive(Debug, Parser)]
 #[command(
-    name = "blp-rs",
+    name = "blp",
     version,
     about = "BLP ↔ PNG converter",
-    long_about = "blp-rs is a command-line utility for converting Warcraft III textures between BLP and PNG formats.",
-    override_usage = "blp-rs <COMMAND>",
+    long_about = "blp is a command-line utility for converting Warcraft III textures between BLP and PNG formats.",
+    override_usage = "blp <COMMAND>",
     subcommand_required = true,     // требуем команду
     // arg_required_else_help не включаем, чтобы при пустом вводе был именно error (код 2), а не help с кодом 0
 )]
@@ -60,7 +60,7 @@ struct Cli {
 // (2) UI + CLI: ЛИБО PATH (для GUI), ЛИБО <COMMAND>
 #[cfg(all(feature = "cli", feature = "ui"))]
 #[derive(Debug, Parser)]
-#[command(name = "blp-rs", version, about = "BLP ↔ PNG converter and simple viewer for Warcraft III textures", long_about = "blp-rs is a command-line utility for converting Warcraft III textures between BLP and PNG formats. It can also launch a native GUI viewer.", override_usage = "blp-rs [PATH]\nblp-rs <COMMAND>")]
+#[command(name = "blp", version, about = "BLP ↔ PNG converter and simple viewer for Warcraft III textures", long_about = "blp is a command-line utility for converting Warcraft III textures between BLP and PNG formats. It can also launch a native GUI viewer.", override_usage = "blp [PATH]\nblp <COMMAND>")]
 struct Cli {
     /// Open the native GUI viewer with this file (used by “Open With…”).
     /// If a subcommand is provided, this argument is ignored.
