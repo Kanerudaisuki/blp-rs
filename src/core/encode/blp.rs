@@ -1,94 +1,103 @@
 use crate::core::image::{ImageBlp, MAX_MIPS};
 use crate::error::error::BlpError;
-use image::{DynamicImage, RgbaImage, imageops::FilterType};
+use image::RgbaImage;
 use std::ffi::CStr;
 use std::ptr;
+use std::time::Instant;
 use turbojpeg::{libc, raw};
 
-pub struct EncoderCtx {
-    pub bytes: Vec<u8>,
-}
+// === ДВЕ СТРУКТУРЫ ===
 
 #[derive(Clone)]
-struct Enc {
-    data: Vec<u8>,
-    sl: Slice,
+pub struct Mip {
+    pub w: u32,
+    pub h: u32,
+    pub vis: bool,
+    // техинфа:
+    pub encode_ms: f64, // время кодирования мипа (мс)
+    // результат:
+    pub encoded: Vec<u8>, // очищенный JPEG (header_clean + scan + EOI)
+    pub head_len: usize,  // длина header-секции внутри encoded (SOI..end(SOS))
 }
 
-#[derive(Clone)]
-struct Slice {
-    head_len: usize,
+pub struct Ctx {
+    pub bytes: Vec<u8>,       // Готовый BLP
+    pub mips: Vec<Mip>,       // После тримминга; без исходных RgbaImage
+    pub has_alpha: bool,      // По первому видимому
+    pub encode_ms_total: f64, // Суммарное время кодирования (мс)
 }
 
 impl ImageBlp {
-    pub fn encode_blp(&self, quality: u8, mip_visible: &[bool]) -> Result<EncoderCtx, BlpError> {
-        // 0) базовый мип
-        let base: RgbaImage = self
+    pub fn encode_blp(&self, quality: u8, mip_visible: &[bool]) -> Result<Ctx, BlpError> {
+        // --- рабочая структура только для этапа кодирования ---
+        struct WorkMip {
+            w: u32,
+            h: u32,
+            vis: bool,
+            img: Option<RgbaImage>, // источник; не уходит в итог
+        }
+
+        // 1) Собираем рабочие мипы и триммим ведущие «дыры»
+        let mut work: Vec<WorkMip> = Vec::with_capacity(self.mipmaps.len().min(MAX_MIPS));
+        for (i, m) in self
             .mipmaps
-            .get(0)
-            .and_then(|m| m.image.clone())
-            .ok_or_else(|| BlpError::new("no_base_image"))?;
-
-        // 1) есть ли альфа?
-        let has_alpha = base.pixels().any(|p| p.0[3] != 255);
-
-        // 3) локально считаем размеры всех мипов и first_vis (без отдельных функций)
-        let (mut w, mut h) = (base.width(), base.height());
-        let mut dims: Vec<(u32, u32, bool)> = Vec::with_capacity(MAX_MIPS);
-        for i in 0..MAX_MIPS {
+            .iter()
+            .take(MAX_MIPS)
+            .enumerate()
+        {
             let vis = mip_visible
                 .get(i)
                 .copied()
                 .unwrap_or(true);
-            dims.push((w, h, vis));
-            if w == 1 && h == 1 {
-                break;
-            }
-            w = (w / 2).max(1);
-            h = (h / 2).max(1);
+            work.push(WorkMip { w: m.width, h: m.height, vis, img: m.image.clone() });
         }
-        let first_vis = dims
+        let start_idx = work
             .iter()
-            .position(|&(_, _, v)| v)
+            .position(|mm| mm.vis && mm.img.is_some())
             .ok_or_else(|| BlpError::new("no_visible_mips_after_mask"))?;
+        let mut work = work.split_off(start_idx);
 
-        // 4) кодируем видимые уровни (всё здесь)
-        let mut rgba_cur = base.clone();
-        let mut enc_by_slot: Vec<Option<Enc>> = vec![None; MAX_MIPS];
-        let mut slot_count = 0usize;
+        // 2) Базовый мип и альфа
+        let base_img = work[0].img.as_ref().unwrap();
+        if base_img.width() != work[0].w || base_img.height() != work[0].h {
+            return Err(BlpError::new("mip.size_mismatch")
+                .with_arg("want_w", work[0].w)
+                .with_arg("want_h", work[0].h)
+                .with_arg("got_w", base_img.width())
+                .with_arg("got_h", base_img.height()));
+        }
+        let has_alpha = base_img.pixels().any(|p| p.0[3] != 255);
 
-        for (lvl, &(dw, dh, vis)) in dims.iter().enumerate() {
-            if lvl > 0 {
-                let dyn1 = DynamicImage::ImageRgba8(rgba_cur).resize_exact(dw, dh, FilterType::Lanczos3);
-                rgba_cur = dyn1.to_rgba8();
-            }
-            if lvl < first_vis {
+        let t0 = Instant::now();
+        let mut out_mips: Vec<Mip> = Vec::with_capacity(work.len());
+        for wm in &mut work {
+            if !(wm.vis && wm.img.is_some()) {
+                out_mips.push(Mip { w: wm.w, h: wm.h, vis: wm.vis, encode_ms: 0.0, encoded: Vec::new(), head_len: 0 });
                 continue;
             }
-
-            let slot = lvl - first_vis;
-            if slot >= MAX_MIPS {
-                break;
-            }
-            slot_count = slot_count.max(slot + 1);
-
-            if !vis {
-                enc_by_slot[slot] = None;
-                continue;
+            let rgba = wm.img.as_ref().unwrap();
+            if rgba.width() != wm.w || rgba.height() != wm.h {
+                return Err(BlpError::new("mip.size_mismatch")
+                    .with_arg("want_w", wm.w)
+                    .with_arg("want_h", wm.h)
+                    .with_arg("got_w", rgba.width())
+                    .with_arg("got_h", rgba.height()));
             }
 
-            let (wz, hz) = (rgba_cur.width() as usize, rgba_cur.height() as usize);
-            let src = &rgba_cur.as_raw();
+            // Упаковка входных пикселей
+            let wz = rgba.width() as usize;
+            let hz = rgba.height() as usize;
+            let src = rgba.as_raw();
             let (packed, pitch) = if has_alpha {
                 let mut out = vec![0u8; wz * hz * 4];
                 for (dst, px) in out
                     .chunks_exact_mut(4)
                     .zip(src.chunks_exact(4))
                 {
-                    dst[0] = 255u8.saturating_sub(px[0]); // C = 255-R
-                    dst[1] = 255u8.saturating_sub(px[1]); // M = 255-G
-                    dst[2] = 255u8.saturating_sub(px[2]); // Y = 255-B
-                    dst[3] = 255u8.saturating_sub(px[3]); // K = 255-A
+                    dst[0] = px[2]; // C ← inv(B)
+                    dst[1] = px[1]; // M ← inv(G)
+                    dst[2] = px[0]; // Y ← inv(R)
+                    dst[3] = px[3]; // K ← inv(A)
                 }
                 (out, wz * 4)
             } else {
@@ -97,18 +106,20 @@ impl ImageBlp {
                     .chunks_exact_mut(3)
                     .zip(src.chunks_exact(4))
                 {
-                    dst[0] = px[0]; // B
+                    dst[0] = px[0]; // R
                     dst[1] = px[1]; // G
-                    dst[2] = px[2]; // R
+                    dst[2] = px[2]; // B
                 }
                 (out, wz * 3)
             };
 
+            let t_mip = Instant::now();
+
+            // TurboJPEG 3 API
             let handle = unsafe { raw::tj3Init(raw::TJINIT_TJINIT_COMPRESS as libc::c_int) };
             if handle.is_null() {
                 return Err(BlpError::new("tj3.init"));
             }
-
             let jpeg_raw = unsafe {
                 struct Guard(raw::tjhandle);
                 impl Drop for Guard {
@@ -129,34 +140,19 @@ impl ImageBlp {
                 if raw::tj3Set(handle, raw::TJPARAM_TJPARAM_OPTIMIZE as libc::c_int, 0) != 0 {
                     return Err(tj3_err(handle, "tj3.optimize"));
                 }
-
-                let mut out_ptr: *mut libc::c_uchar = ptr::null_mut();
-                let mut out_size: raw::size_t = 0;
-
-                if raw::tj3Set(
-                    handle, //
-                    raw::TJPARAM_TJPARAM_COLORSPACE as libc::c_int,
-                    if has_alpha {
-                        raw::TJCS_TJCS_CMYK as libc::c_int //
-                    } else {
-                        raw::TJCS_TJCS_RGB as libc::c_int
-                    },
-                ) != 0
-                {
+                if raw::tj3Set(handle, raw::TJPARAM_TJPARAM_COLORSPACE as libc::c_int, if has_alpha { raw::TJCS_TJCS_CMYK as libc::c_int } else { raw::TJCS_TJCS_RGB as libc::c_int }) != 0 {
                     return Err(tj3_err(handle, "tj3.colorspace"));
                 }
 
+                let mut out_ptr: *mut libc::c_uchar = ptr::null_mut();
+                let mut out_size: raw::size_t = 0;
                 let r = raw::tj3Compress8(
                     handle, //
                     packed.as_ptr(),
                     wz as libc::c_int,
                     pitch as libc::c_int,
                     hz as libc::c_int,
-                    if has_alpha {
-                        raw::TJPF_TJPF_CMYK as libc::c_int // вход: CMYK
-                    } else {
-                        raw::TJPF_TJPF_BGR as libc::c_int // вход: BGR
-                    },
+                    if has_alpha { raw::TJPF_TJPF_CMYK as libc::c_int } else { raw::TJPF_TJPF_BGR as libc::c_int },
                     &mut out_ptr,
                     &mut out_size,
                 );
@@ -169,31 +165,122 @@ impl ImageBlp {
                 vec
             };
 
+            // Санитайз + ре-сборка
             let (head_len, _scan_len) = split_header_and_scan(&jpeg_raw)?;
-            // минимальная уборка мусора: выкидываем APPn/COM и двигаем SOF перед SOS
             let header_clean = rebuild_header_min(&jpeg_raw[..head_len])?;
             let mut rebuilt = Vec::with_capacity(jpeg_raw.len());
             rebuilt.extend_from_slice(&header_clean);
             rebuilt.extend_from_slice(&jpeg_raw[head_len..]); // scan + EOI
-
             let (h2, _s2) = split_header_and_scan(&rebuilt)?;
-            enc_by_slot[slot] = Some(Enc { data: rebuilt, sl: Slice { head_len: h2 } });
+
+            let encode_ms = t_mip.elapsed().as_secs_f64() * 1000.0;
+            out_mips.push(Mip { w: wm.w, h: wm.h, vis: wm.vis, encode_ms, encoded: rebuilt, head_len: h2 });
         }
 
-        if enc_by_slot
-            .get(0)
-            .and_then(|x| x.as_ref())
-            .is_none()
+        let encode_ms_total = t0.elapsed().as_secs_f64() * 1000.0;
+
+        // Первый видимый обязан быть закодирован
+        if out_mips
+            .first()
+            .map(|m| m.encoded.is_empty())
+            .unwrap_or(true)
         {
             return Err(BlpError::new("first_visible_slot_missing"));
         }
 
-        // 5) финальная сборка контейнера BLP
-        let bytes = finalize_blp_write(enc_by_slot, slot_count, &dims, first_vis, has_alpha)?;
-        Ok(EncoderCtx { bytes })
+        // 4) Инлайн финализации BLP → bytes
+        // общий header как общий префикс
+        let mut heads: Vec<&[u8]> = Vec::new();
+        for m in &out_mips {
+            if !m.encoded.is_empty() {
+                heads.push(&m.encoded[..m.head_len]);
+            }
+        }
+        if heads.is_empty() {
+            return Err(BlpError::new("no_encoded_heads"));
+        }
+        let mut common_header = header_prefix(&heads);
+        if common_header.len() < 2 || common_header[0] != 0xFF || common_header[1] != 0xD8 {
+            return Err(BlpError::new("bad_common_header"));
+        }
+        for h in &heads {
+            while !h.starts_with(&common_header) && !common_header.is_empty() {
+                common_header.pop();
+            }
+            if !h.starts_with(&common_header) {
+                return Err(BlpError::new("head_prefix_mismatch"));
+            }
+        }
+
+        #[derive(Clone)]
+        struct Block<'a> {
+            len: u32,
+            bytes: &'a [u8],
+        }
+        let mut blocks: Vec<Option<Block>> = vec![None; out_mips.len()];
+        for (i, m) in out_mips.iter().enumerate() {
+            if !m.encoded.is_empty() {
+                let head = &m.encoded[..m.head_len];
+                let trimmed = &head[common_header.len()..];
+                let payload = &m.encoded[head.len() - trimmed.len()..];
+                blocks[i] = Some(Block { len: payload.len() as u32, bytes: payload });
+            }
+        }
+
+        let base_w = out_mips[0].w;
+        let base_h = out_mips[0].h;
+        let flags: u32 = if has_alpha { 8 } else { 0 };
+        let compression: u32 = 0; // JPEG
+        let extra_field: u32 = 0;
+        let has_mipmaps: u32 = 1;
+
+        let mut offsets = [0u32; MAX_MIPS];
+        let mut sizes = [0u32; MAX_MIPS];
+
+        let blp_header_size = 4 + 4 + 4 + 4 + 4 + 4 + 4 + (MAX_MIPS as u32) * 4 + (MAX_MIPS as u32) * 4;
+        let jpeg_header_block_size = 4 + (common_header.len() as u32);
+
+        let mut cur = blp_header_size + jpeg_header_block_size;
+        for i in 0..MAX_MIPS.min(blocks.len()) {
+            if let Some(b) = &blocks[i] {
+                offsets[i] = cur;
+                sizes[i] = b.len;
+                cur = cur
+                    .checked_add(b.len)
+                    .ok_or_else(|| BlpError::new("offset_overflow"))?;
+            }
+        }
+
+        let mut bytes = Vec::with_capacity(cur as usize);
+        bytes.extend_from_slice(b"BLP1");
+        bytes.extend_from_slice(&compression.to_le_bytes());
+        bytes.extend_from_slice(&flags.to_le_bytes());
+        bytes.extend_from_slice(&base_w.to_le_bytes());
+        bytes.extend_from_slice(&base_h.to_le_bytes());
+        bytes.extend_from_slice(&extra_field.to_le_bytes());
+        bytes.extend_from_slice(&has_mipmaps.to_le_bytes());
+        for &off in &offsets {
+            bytes.extend_from_slice(&off.to_le_bytes());
+        }
+        for &sz in &sizes {
+            bytes.extend_from_slice(&sz.to_le_bytes());
+        }
+        bytes.extend_from_slice(&(common_header.len() as u32).to_le_bytes());
+        bytes.extend_from_slice(&common_header);
+        for i in 0..MAX_MIPS.min(blocks.len()) {
+            if let Some(b) = &blocks[i] {
+                bytes.extend_from_slice(b.bytes);
+            }
+        }
+
+        Ok(Ctx {
+            bytes, //
+            mips: out_mips,
+            has_alpha,
+            encode_ms_total,
+        })
     }
 }
-
 fn be_u16(b: &[u8]) -> Result<usize, BlpError> {
     if b.len() < 2 {
         return Err(BlpError::new("jpeg.len"));
@@ -278,94 +365,6 @@ fn header_prefix(heads: &[&[u8]]) -> Vec<u8> {
         }
     }
     out
-}
-
-fn finalize_blp_write(enc_by_slot: Vec<Option<Enc>>, slot_count: usize, dims: &[(u32, u32, bool)], first_vis: usize, has_alpha: bool) -> Result<Vec<u8>, BlpError> {
-    // общий header как общий префикс
-    let mut heads: Vec<&[u8]> = Vec::new();
-    for i in 0..slot_count {
-        if let Some(e) = &enc_by_slot[i] {
-            heads.push(&e.data[..e.sl.head_len]);
-        }
-    }
-    if heads.is_empty() {
-        return Err(BlpError::new("no_encoded_heads"));
-    }
-    let mut common_header = header_prefix(&heads);
-    if common_header.len() < 2 || common_header[0] != 0xFF || common_header[1] != 0xD8 {
-        return Err(BlpError::new("bad_common_header"));
-    }
-    for h in &heads {
-        while !h.starts_with(&common_header) && !common_header.is_empty() {
-            common_header.pop();
-        }
-        if !h.starts_with(&common_header) {
-            return Err(BlpError::new("head_prefix_mismatch"));
-        }
-    }
-
-    // вырезаем общий head
-    #[derive(Clone)]
-    struct Block<'a> {
-        len: u32,
-        bytes: &'a [u8],
-    }
-    let mut blocks: Vec<Option<Block>> = vec![None; enc_by_slot.len()];
-    for i in 0..slot_count {
-        if let Some(e) = &enc_by_slot[i] {
-            let head = &e.data[..e.sl.head_len];
-            let trimmed = &head[common_header.len()..];
-            let payload = &e.data[head.len() - trimmed.len()..];
-            blocks[i] = Some(Block { len: payload.len() as u32, bytes: payload });
-        }
-    }
-
-    let base_w = dims[first_vis].0;
-    let base_h = dims[first_vis].1;
-    let flags: u32 = if has_alpha { 8 } else { 0 };
-    let compression: u32 = 0; // JPEG
-    let extra_field: u32 = 5;
-    let has_mipmaps: u32 = 1;
-
-    let mut offsets = [0u32; MAX_MIPS];
-    let mut sizes = [0u32; MAX_MIPS];
-
-    let blp_header_size = 4 + 4 + 4 + 4 + 4 + 4 + 4 + (MAX_MIPS as u32) * 4 + (MAX_MIPS as u32) * 4;
-    let jpeg_header_block_size = 4 + (common_header.len() as u32);
-
-    let mut cur = blp_header_size + jpeg_header_block_size;
-    for i in 0..MAX_MIPS.min(blocks.len()) {
-        if let Some(b) = &blocks[i] {
-            offsets[i] = cur;
-            sizes[i] = b.len;
-            cur = cur
-                .checked_add(b.len)
-                .ok_or_else(|| BlpError::new("offset_overflow"))?;
-        }
-    }
-
-    let mut out = Vec::with_capacity(cur as usize);
-    out.extend_from_slice(b"BLP1");
-    out.extend_from_slice(&compression.to_le_bytes());
-    out.extend_from_slice(&flags.to_le_bytes());
-    out.extend_from_slice(&base_w.to_le_bytes());
-    out.extend_from_slice(&base_h.to_le_bytes());
-    out.extend_from_slice(&extra_field.to_le_bytes());
-    out.extend_from_slice(&has_mipmaps.to_le_bytes());
-    for &off in &offsets {
-        out.extend_from_slice(&off.to_le_bytes());
-    }
-    for &sz in &sizes {
-        out.extend_from_slice(&sz.to_le_bytes());
-    }
-    out.extend_from_slice(&(common_header.len() as u32).to_le_bytes());
-    out.extend_from_slice(&common_header);
-    for i in 0..MAX_MIPS.min(blocks.len()) {
-        if let Some(b) = &blocks[i] {
-            out.extend_from_slice(b.bytes);
-        }
-    }
-    Ok(out)
 }
 
 // ============ Санитайзер header (минимальный) ============

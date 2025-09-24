@@ -4,36 +4,20 @@ use crate::error::error::BlpError;
 use std::path::PathBuf;
 
 #[cfg(feature = "cli")]
-use crate::cli::command::to_blp::to_blp;
-#[cfg(feature = "cli")]
-use crate::cli::command::to_png::to_png;
+use {
+    crate::cli::command::to_blp::to_blp,
+    crate::cli::command::to_png::to_png,
+    clap::{Parser, Subcommand, error::ErrorKind},
+};
+
 #[cfg(feature = "ui")]
 use crate::ui::viewer::run_native::run_native;
 
-#[cfg(all(feature = "cli", not(feature = "ui")))]
-use clap::CommandFactory;
-#[cfg(feature = "cli")]
-use clap::{Parser, Subcommand, error::ErrorKind};
+// ===== enforce: 'ui' всегда вместе с 'cli' =====
+#[cfg(all(feature = "ui", not(feature = "cli")))]
+compile_error!("Feature 'ui' requires 'cli'. Use either `--features \"cli\"` or `--features \"ui cli\"`. ");
 
-#[cfg(feature = "cli")]
-#[derive(Debug, Parser)]
-#[command(
-    name = "blp-rs",
-    version,
-    about = "BLP ↔ PNG converter and simple viewer for Warcraft III textures",
-    long_about = "blp-rs is a command-line utility for converting Warcraft III textures \
-                  between BLP and PNG formats. It can also launch a native GUI viewer."
-)]
-struct Cli {
-    /// Open the native GUI viewer with this file (used by “Open With…”)
-    ///
-    /// If a subcommand is provided, this argument is ignored.
-    #[arg(value_name = "PATH")]
-    path: Option<PathBuf>,
-
-    #[command(subcommand)]
-    command: Option<Command>,
-}
+// ======================= Команды CLI =======================
 
 #[cfg(feature = "cli")]
 #[derive(Debug, Subcommand)]
@@ -45,7 +29,6 @@ enum Command {
         /// Optional output path. If not specified, the extension will be replaced with .blp
         output: Option<PathBuf>,
     },
-
     /// Convert a BLP texture into PNG format
     ToPng {
         /// Input file (e.g. BLP)
@@ -55,81 +38,88 @@ enum Command {
     },
 }
 
+// ======================= Разные CLI-структуры под сборки =======================
+
+// (1) Только CLI: НЕТ PATH, подкоманда обязательна → без неё ошибка (exit 2)
+#[cfg(all(feature = "cli", not(feature = "ui")))]
+#[derive(Debug, Parser)]
+#[command(
+    name = "blp-rs",
+    version,
+    about = "BLP ↔ PNG converter",
+    long_about = "blp-rs is a command-line utility for converting Warcraft III textures between BLP and PNG formats.",
+    override_usage = "blp-rs <COMMAND>",
+    subcommand_required = true,     // требуем команду
+    // arg_required_else_help не включаем, чтобы при пустом вводе был именно error (код 2), а не help с кодом 0
+)]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+// (2) UI + CLI: ЛИБО PATH (для GUI), ЛИБО <COMMAND>
+#[cfg(all(feature = "cli", feature = "ui"))]
+#[derive(Debug, Parser)]
+#[command(name = "blp-rs", version, about = "BLP ↔ PNG converter and simple viewer for Warcraft III textures", long_about = "blp-rs is a command-line utility for converting Warcraft III textures between BLP and PNG formats. It can also launch a native GUI viewer.", override_usage = "blp-rs [PATH]\nblp-rs <COMMAND>")]
+struct Cli {
+    /// Open the native GUI viewer with this file (used by “Open With…”).
+    /// If a subcommand is provided, this argument is ignored.
+    #[arg(value_name = "PATH")]
+    path: Option<PathBuf>,
+
+    #[command(subcommand)]
+    command: Option<Command>,
+}
+
+// ======================= Хелперы =======================
+
+#[cfg(feature = "cli")]
+fn run_cli_command(cmd: Command) -> Result<(), BlpError> {
+    match cmd {
+        Command::ToBlp { input, output } => to_blp(&input, output.as_ref()),
+        Command::ToPng { input, output } => to_png(&input, output.as_ref()),
+    }
+}
+
+/// try_parse с единым поведением:
+/// - Help/Version → печать и None (код 0)
+/// - Прочие ошибки → печать и немедленный exit (обычно код 2)
+#[cfg(feature = "cli")]
+fn parse_cli_or_exit() -> Option<Cli> {
+    match Cli::try_parse() {
+        Ok(cli) => Some(cli),
+        Err(e) => {
+            match e.kind() {
+                ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => {
+                    let _ = e.print(); // graceful 0
+                    None
+                }
+                _ => {
+                    let _ = e.print();
+                    std::process::exit(e.exit_code()); // обычно 2
+                }
+            }
+        }
+    }
+}
+
+// ======================= Точки входа =======================
+
+// UI + CLI: команда → CLI; иначе → UI (с PATH или пустой)
 #[cfg(all(feature = "cli", feature = "ui"))]
 pub fn run() -> Result<(), BlpError> {
-    match Cli::try_parse() {
-        Ok(cli) => {
-            if let Some(cmd) = cli.command {
-                match cmd {
-                    Command::ToBlp { input, output } => {
-                        to_blp(&input, output.as_ref())?;
-                    }
-                    Command::ToPng { input, output } => {
-                        to_png(&input, output.as_ref())?;
-                    }
-                }
-            } else {
-                // Нет подкоманды → GUI режим. path приходит из “Open With…”
-                run_native(cli.path)?;
-            }
-            Ok(())
-        }
-        Err(e) => match e.kind() {
-            ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => {
-                e.print()?;
-                Ok(())
-            }
-            _ => {
-                e.print()?;
-                std::process::exit(e.exit_code());
-            }
-        },
-    }
+    let Some(cli) = parse_cli_or_exit() else {
+        return Ok(());
+    };
+    if let Some(cmd) = cli.command { run_cli_command(cmd) } else { run_native(cli.path) }
 }
 
+// Только CLI: команда обязательна (гарантируется атрибутом subcommand_required)
 #[cfg(all(feature = "cli", not(feature = "ui")))]
 pub fn run() -> Result<(), BlpError> {
-    match Cli::try_parse() {
-        Ok(cli) => {
-            if let Some(cmd) = cli.command {
-                match cmd {
-                    Command::ToBlp { input, output } => {
-                        to_blp(&input, output.as_ref())?;
-                    }
-                    Command::ToPng { input, output } => {
-                        to_png(&input, output.as_ref())?;
-                    }
-                }
-                Ok(())
-            } else {
-                Cli::command()
-                    .error(ErrorKind::MissingSubcommand, "`ui` feature disabled; use a subcommand to run the CLI")
-                    .exit();
-            }
-        }
-        Err(e) => match e.kind() {
-            ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => {
-                e.print()?;
-                Ok(())
-            }
-            _ => {
-                e.print()?;
-                std::process::exit(e.exit_code());
-            }
-        },
-    }
-}
-
-#[cfg(all(not(feature = "cli"), feature = "ui"))]
-pub fn run() -> Result<(), BlpError> {
-    let path = std::env::args_os()
-        .nth(1)
-        .map(PathBuf::from);
-    run_native(path)?;
-    Ok(())
-}
-
-#[cfg(all(not(feature = "cli"), not(feature = "ui")))]
-pub fn run() -> Result<(), BlpError> {
-    Err(BlpError::new("runtime-features-disabled").with_arg("features", "cli, ui"))
+    let Some(cli) = parse_cli_or_exit() else {
+        return Ok(());
+    };
+    // здесь команда уже точно есть благодаря subcommand_required=true
+    run_cli_command(cli.command)
 }

@@ -1,8 +1,9 @@
 use crate::error::error::BlpError;
+use crate::flargs;
 use crate::ui::viewer::app::App;
 use crate::ui::viewer::layout::file_saver::export_quality::export_quality_save;
 use crate::ui::viewer::layout::file_saver::save_same_dir::save_same_dir_save;
-use eframe::egui::{Button, Context, CursorIcon, Frame, Label, Margin, RichText, ScrollArea, Sense, SidePanel, Slider, vec2};
+use eframe::egui::{Button, Context, CursorIcon, Frame, Margin, RichText, ScrollArea, Sense, SidePanel, Slider, vec2};
 
 impl App {
     fn default_names(&self) -> (String, String) {
@@ -43,8 +44,10 @@ impl App {
                         Frame { inner_margin: Margin { left: spx_i, right: spx_i, top: 0, bottom: 0 }, ..Default::default() }.show(ui, |ui| {
                             ui.add_space(ui.spacing().item_spacing.y * 2.0);
 
+                            let save_same_dir = self.save_same_dir && self.picked_file.is_some();
+
                             // ------- Переключатель «Выбрать путь / Сохранить рядом» -------
-                            let (label_key, hint_key) = if self.save_same_dir {
+                            let (label_key, hint_key) = if save_same_dir {
                                 ("save-location-same-dir", "save-location-hint-same-dir")
                             } else {
                                 ("save-location-select-path", "save-location-hint-select-path")
@@ -108,30 +111,22 @@ impl App {
 
                             ui.add_space(ui.spacing().item_spacing.y);
 
-                            let quality_label = self.tr("blp-quality");
-                            ui.add(Label::new(quality_label).wrap());
-
+                            let quality_label = self.tr_args("blp-quality", &flargs!(val = self.export_quality));
                             let quality_hint = self.tr("blp-quality-hint");
-                            const VALUE_WIDTH: f32 = 44.0;
-                            let slider_width = (ui.available_width() - VALUE_WIDTH - ui.spacing().item_spacing.x).max(0.0);
-                            let mut slider_changed = false;
-                            ui.horizontal(|ui| {
-                                let slider_scope = ui.scope(|ui| {
-                                    ui.set_width(slider_width);
-                                    ui.spacing_mut().slider_width = slider_width;
-                                    ui.add(Slider::new(&mut self.export_quality, 0..=100).show_value(false))
-                                });
-                                let slider_resp = slider_scope
-                                    .inner
-                                    .on_hover_text(quality_hint.clone());
-                                if slider_resp.changed() {
-                                    slider_changed = true;
-                                }
 
-                                let value_text = format!("{:>3}", self.export_quality);
-                                ui.add_sized([VALUE_WIDTH, 0.0], Label::new(RichText::new(value_text).monospace()).wrap());
+                            ui.vertical_centered(|ui| {
+                                ui.label(RichText::new(quality_label).strong())
+                                    .on_hover_text(quality_hint.clone());
                             });
-                            if slider_changed {
+
+                            if ui
+                                .add(
+                                    Slider::new(&mut self.export_quality, 0..=100) //
+                                        .show_value(false),
+                                )
+                                .on_hover_text(quality_hint.clone())
+                                .changed()
+                            {
                                 let _ = export_quality_save(self.export_quality);
                             }
                         });

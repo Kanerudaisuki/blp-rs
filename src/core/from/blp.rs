@@ -46,8 +46,6 @@ impl ImageBlp {
 
         let mi = (32 - width.max(height).leading_zeros()) as usize;
 
-        println!("mi: {}", mi);
-
         if version >= Version::BLP1 {
             for i in 0..MAX_MIPS {
                 mipmaps[i].offset = cursor.read_u32::<LittleEndian>()? as usize;

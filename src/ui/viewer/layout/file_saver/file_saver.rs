@@ -49,7 +49,7 @@ impl App {
     pub(crate) fn preview_save_path(&self, default_name: &str, ext: &str) -> SavePreview {
         let name = ensure_ext(default_name, ext);
 
-        if self.save_same_dir {
+        if self.save_same_dir && self.picked_file.is_some() {
             if let Some(src) = self.picked_file.as_ref() {
                 if let Some(parent) = src.parent() {
                     return SavePreview::Direct(parent.join(&name));
@@ -90,7 +90,7 @@ impl App {
     /// Реальное получение пути: учитывает переключатель и запоминает папку.
     pub(crate) fn pick_save_path(&mut self, default_name: &str, ext: &str, desc: String) -> Option<PathBuf> {
         // 1) «рядом», если можем
-        if self.save_same_dir {
+        if self.save_same_dir && self.picked_file.is_some() {
             if let Some(src) = self.picked_file.as_ref() {
                 if let Some(parent) = src.parent() {
                     let file_name = ensure_ext(default_name, ext);

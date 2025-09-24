@@ -41,8 +41,10 @@ mips-all = All
 mips-none = None
 hint-mips-all = Enable all mip levels
 hint-mips-none = Disable all mip levels
-blp-quality = BLP quality
-blp-quality-hint = JPEG quality used when exporting BLP textures
+
+blp-quality = BLP quality: { $val }
+blp-quality-hint = Compression quality for BLP export. 0 = worst, 100 = best.
+
 no-visible-mip-hint = No mip level is selected.\nUse the right panel to choose one.
 
 blp-texture = BLP texture

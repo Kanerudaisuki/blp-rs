@@ -39,7 +39,7 @@ impl ImageBlp {
             }
             w = (w / 2).max(1);
             h = (h / 2).max(1);
-            prev = resize(&prev, w, h, FilterType::Triangle);
+            prev = resize(&prev, w, h, FilterType::Lanczos3);
         }
         Ok(())
     }

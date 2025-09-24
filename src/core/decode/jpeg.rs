@@ -74,7 +74,7 @@ impl ImageBlp {
                             .with_arg("mip", i as u32));
                     }
 
-                    if option_env!("NEVER").is_some() {
+                    if option_env!("NEVER").is_none() {
                         for (p, px) in img.pixels_mut().enumerate() {
                             let idx = p * 3;
                             *px = Rgba([

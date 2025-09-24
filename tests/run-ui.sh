@@ -15,3 +15,4 @@ if [[ ${#ARGS[@]} -eq 0 ]]; then
 fi
 
 cargo run --release --bin blp-rs-ui --features "cli ui" -- "${ARGS[@]}"
+#cargo run --release --bin blp-rs-ui --features "cli ui"
