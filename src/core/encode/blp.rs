@@ -267,6 +267,7 @@ impl ImageBlp {
         }
         bytes.extend_from_slice(&(common_header.len() as u32).to_le_bytes());
         bytes.extend_from_slice(&common_header);
+        bytes.extend_from_slice(b"RAFT");
         for i in 0..MAX_MIPS.min(blocks.len()) {
             if let Some(b) = &blocks[i] {
                 bytes.extend_from_slice(b.bytes);
