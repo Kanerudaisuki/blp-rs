@@ -11,6 +11,8 @@ keywords = ["blp", "warcraft", "image", "texture"]
 categories = ["encoding", "graphics"]
 exclude = [
     "preview/*",
+    "target/*",
+    "test-data/*",
     "*.sh",
 ]
 

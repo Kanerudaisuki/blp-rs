@@ -1,5 +1,3 @@
-use crate::error::error::BlpError;
-
 #[cfg(any(feature = "cli", feature = "ui"))]
 use std::path::PathBuf;
 
@@ -7,6 +5,7 @@ use std::path::PathBuf;
 use {
     crate::cli::command::to_blp::to_blp,
     crate::cli::command::to_png::to_png,
+    crate::error::error::BlpError,
     clap::{Parser, Subcommand, error::ErrorKind},
 };
 
