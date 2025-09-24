@@ -71,8 +71,8 @@ impl ImageBlp {
     /// 1) Считываем исходные размеры
     /// 2) Выбираем целевой кадр (W*,H*) — степени двойки по правилу «минимум апскейла» и «минимум кропа»
     /// 3) Формируем цепочку мипов (только width/height), image=None
+    ///    Хвост после 1×1 заполняем 0×0 (а не 1×1).
     pub fn from_buf_image(buf: &[u8]) -> Result<Self, BlpError> {
-        // Берём только метаданные (через image crate всё равно декодируем, но не строим мипы)
         let dyn_img = image::load_from_memory(buf)?;
         let (w0, h0) = dyn_img.dimensions();
         if w0 == 0 || h0 == 0 {
@@ -83,22 +83,28 @@ impl ImageBlp {
 
         let (base_w, base_h) = pick_pow2_cover(w0, h0);
 
-        // Заполняем ровно MAX_MIPS уровней: делим пополам до 1×1, остаток — 1×1
+        // Сколько уровней до 1×1 включительно:
+        // floor(log2(max)) + 1  ==  32 - leading_zeros(max)  (для u32)
+        let levels = (32 - base_w.max(base_h).leading_zeros()) as usize;
+
         let mut mipmaps = Vec::with_capacity(MAX_MIPS);
         let (mut w, mut h) = (base_w, base_h);
-        for _ in 0..MAX_MIPS {
-            mipmaps.push(Mipmap {
-                width: w,
-                height: h,
-                image: None, // важное: НЕ создаём RgbaImage
-                offset: 0,
-                length: 0,
-            });
-            if w == 1 && h == 1 {
-                // оставшиеся уровни тоже 1×1
-            } else {
+
+        for i in 0..MAX_MIPS {
+            if i < levels {
+                mipmaps.push(Mipmap {
+                    width: w,
+                    height: h,
+                    image: None, // НЕ создаём RgbaImage
+                    offset: 0,
+                    length: 0,
+                });
+                // делим пополам, но не ниже 1
                 w = (w / 2).max(1);
                 h = (h / 2).max(1);
+            } else {
+                // хвост — отсутствующие уровни
+                mipmaps.push(Mipmap::default());
             }
         }
 

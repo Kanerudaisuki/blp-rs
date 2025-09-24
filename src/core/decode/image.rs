@@ -19,7 +19,7 @@ impl ImageBlp {
         let s = sx.max(sy);
         let rw = (sw as f32 * s).ceil() as u32;
         let rh = (sh as f32 * s).ceil() as u32;
-        let resized = resize(&src, rw, rh, FilterType::Triangle);
+        let resized = resize(&src, rw, rh, FilterType::Lanczos3);
 
         // 2) центр-кроп в ровно (tw,th)
         let cx = ((rw - tw) / 2).min(rw.saturating_sub(tw));
