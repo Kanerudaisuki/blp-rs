@@ -40,32 +40,28 @@ impl ImageBlp {
             (0u32, has_mips as u32)
         };
 
-        // таблицы смещений/длин
-        let mut mipmap_offsets = [0u32; MAX_MIPS];
-        let mut mipmap_lengths = [0u32; MAX_MIPS];
+        // --- читаем таблицы смещений/длин
+        let mut mipmaps: [Mipmap; MAX_MIPS] = std::array::from_fn(|_| Mipmap::default());
+        let (mut w, mut h) = (width, height);
+
+        let mi = (32 - width.max(height).leading_zeros()) as usize;
+
+        println!("mi: {}", mi);
+
         if version >= Version::BLP1 {
             for i in 0..MAX_MIPS {
-                mipmap_offsets[i] = cursor.read_u32::<LittleEndian>()?;
+                mipmaps[i].offset = cursor.read_u32::<LittleEndian>()? as usize;
             }
             for i in 0..MAX_MIPS {
-                mipmap_lengths[i] = cursor.read_u32::<LittleEndian>()?;
-            }
-        }
+                mipmaps[i].length = cursor.read_u32::<LittleEndian>()? as usize;
+                if i < mi {
+                    mipmaps[i].width = w;
+                    w = (w / 2).max(1);
 
-        // ширины/высоты для всех MAX_MIPS
-        let mut wh = [(1u32, 1u32); MAX_MIPS];
-        let (mut w, mut h) = (width.max(1), height.max(1));
-        for i in 0..MAX_MIPS {
-            wh[i] = (w, h);
-            if w > 1 || h > 1 {
-                w = (w / 2).max(1);
-                h = (h / 2).max(1);
+                    mipmaps[i].height = h;
+                    h = (h / 2).max(1);
+                }
             }
-        }
-
-        let mut mipmaps = Vec::with_capacity(MAX_MIPS);
-        for i in 0..MAX_MIPS {
-            mipmaps.push(Mipmap { width: wh[i].0, height: wh[i].1, image: None, offset: mipmap_offsets[i] as usize, length: mipmap_lengths[i] as usize });
         }
 
         // header_offset / header_length
@@ -92,8 +88,8 @@ impl ImageBlp {
         // считаем дырки
         let mut ranges = Vec::new();
         for i in 0..MAX_MIPS {
-            let off = mipmap_offsets[i] as usize;
-            let len = mipmap_lengths[i] as usize;
+            let off = mipmaps[i].offset;
+            let len = mipmaps[i].length;
             if len == 0 {
                 continue;
             }
@@ -130,9 +126,7 @@ impl ImageBlp {
             height,
             extra,
             has_mipmaps,
-            mipmap_offsets,
-            mipmap_lengths,
-            mipmaps,
+            mipmaps: mipmaps.into_iter().collect(),
             holes,
             header_offset,
             header_length,

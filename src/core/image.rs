@@ -18,8 +18,6 @@ pub struct ImageBlp {
     pub height: u32,
     pub extra: u32,                      // meaningful only if version <= BLP1
     pub has_mipmaps: u32,                // meaningful only if version <= BLP1 or >= BLP2
-    pub mipmap_offsets: [u32; MAX_MIPS], // valid if version >= BLP1
-    pub mipmap_lengths: [u32; MAX_MIPS], // valid if version >= BLP1
     //
     pub mipmaps: Vec<Mipmap>,
     pub holes: usize,

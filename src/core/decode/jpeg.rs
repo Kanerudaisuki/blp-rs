@@ -15,8 +15,8 @@ impl ImageBlp {
         let header_bytes = &buf[h_off..h_off + h_len];
 
         for i in 0..self.mipmaps.len() {
-            let off = self.mipmap_offsets[i] as usize;
-            let len = self.mipmap_lengths[i] as usize;
+            let off = self.mipmaps[i].offset;
+            let len = self.mipmaps[i].length;
             if len == 0 {
                 continue;
             }
@@ -49,8 +49,6 @@ impl ImageBlp {
 
             let mut img = RgbaImage::new(w, h);
             let force_opaque = self.alpha_bits == 0;
-
-            println!("info.pixel_format {:?}", info.pixel_format);
 
             match info.pixel_format {
                 PixelFormat::CMYK32 => {
@@ -89,22 +87,22 @@ impl ImageBlp {
                     } else {
                         for (p, px) in img.pixels_mut().enumerate() {
                             let idx = p * 3;
-                            let r = pixels[idx + 0] as f32;
-                            let g = pixels[idx + 1] as f32;
-                            let b = pixels[idx + 2] as f32;
+                            let (r, g, b) = (
+                                pixels[idx + 2] as f32, //
+                                pixels[idx + 1] as f32,
+                                pixels[idx + 0] as f32,
+                            );
+                            let y = (0.2990 * r + 0.5870 * g + 0.1140 * b)
+                                .round()
+                                .clamp(0.0, 255.0) as u8;
+                            let cb = (128.0 - 0.168736 * r - 0.331264 * g + 0.5 * b)
+                                .round()
+                                .clamp(0.0, 255.0) as u8;
+                            let cr = (128.0 + 0.5 * r - 0.418688 * g - 0.081312 * b)
+                                .round()
+                                .clamp(0.0, 255.0) as u8;
 
-                            // RGB → YCbCr (BT.601 JPEG)
-                            let y = (0.2990 * r + 0.5870 * g + 0.1140 * b).round();
-                            let cb = (128.0 - 0.168736 * r - 0.331264 * g + 0.5 * b).round();
-                            let cr = (128.0 + 0.5 * r - 0.418688 * g - 0.081312 * b).round();
-
-                            // зажимаем в [0,255]
-                            let y = y.clamp(0.0, 255.0) as u8;
-                            let cb = cb.clamp(0.0, 255.0) as u8;
-                            let cr = cr.clamp(0.0, 255.0) as u8;
-
-                            // кладём Y,Cb,Cr как RGB (вот и получается «пиздец»)
-                            *px = Rgba([y, cb, cr, 255]);
+                            *px = Rgba([cb, cr, y, 255]);
                         }
                     }
                 }

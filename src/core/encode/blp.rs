@@ -1,166 +1,197 @@
-use crate::core::encode::utils::pack_bgr_from_rgba::pack_bgr_from_rgba;
-use crate::core::encode::utils::pack_cmyk_from_rgba::pack_cmyk_from_rgba;
-use crate::core::encode::utils::tj3_compress_cmyk::tj3_compress_cmyk;
-use crate::core::encode::utils::tj3_compress_ycbcr_from_rgb::tj3_compress_ycbcr_from_rgb;
-use crate::core::encode::utils::tj3_err::tj3_err;
 use crate::core::image::{ImageBlp, MAX_MIPS};
 use crate::error::error::BlpError;
 use image::{DynamicImage, RgbaImage, imageops::FilterType};
+use std::ffi::CStr;
+use std::ptr;
 use turbojpeg::{libc, raw};
 
-// ============ Публичный вход ============
 pub struct EncoderCtx {
     pub bytes: Vec<u8>,
 }
 
-impl ImageBlp {
-    pub fn encode_blp(&self, quality: u8, mip_visible: &[bool]) -> Result<EncoderCtx, BlpError> {
-        let base: RgbaImage = self
-            .mipmaps
-            .get(0)
-            .and_then(|m| m.image.clone())
-            .ok_or_else(|| BlpError::new("no_base_image"))?;
-
-        let has_alpha = base.pixels().any(|p| p.0[3] != 255);
-
-        if has_alpha {
-            encode_blp_impl(
-                &base,
-                quality,
-                mip_visible,
-                /*has_alpha=*/ true,
-                pack_cmyk_from_rgba, // RGBA -> CMYK (K = 255-A)
-                tj3_compress_cmyk,   // CMYK, 4:4:4
-            )
-        } else {
-            encode_blp_impl(
-                &base,
-                quality,
-                mip_visible,
-                /*has_alpha=*/ false,
-                //pack_bgr_from_rgba, // RGBA -> BGR (как договаривались)
-                //tj3_compress_rgb_from_bgr, // RGB colorspace, вход TJPF_BGR
-                pack_bgr_from_rgba,
-                tj3_compress_ycbcr_from_rgb,
-            )
-        }
-    }
-}
-
-// ============ Общая реализация (без дублирования) ============
-
-type PackFn = fn(&RgbaImage) -> (Vec<u8>, usize /*pitch bytes*/);
-type CompressFn = fn(&[u8], usize, usize, usize, i32) -> Result<Vec<u8>, BlpError>;
-
-fn encode_blp_impl(base_rgba: &RgbaImage, quality: u8, mip_visible: &[bool], has_alpha: bool, pack: PackFn, compress: CompressFn) -> Result<EncoderCtx, BlpError> {
-    // 1) размеры/маска и первый видимый
-    let (dims, first_vis) = build_dims_and_first_vis(base_rgba, mip_visible)?;
-    // 2) гоним мип-цепочку и кодируем каждый видимый уровень
-    let (enc_by_slot, slot_count) = encode_visible_levels(base_rgba, &dims, first_vis, quality, pack, compress)?;
-    // 3) финальная сборка BLP
-    let bytes = finalize_blp_write(enc_by_slot, slot_count, &dims, first_vis, has_alpha)?;
-    Ok(EncoderCtx { bytes })
-}
-
-fn encode_visible_levels(base_rgba: &RgbaImage, dims: &[(u32, u32, bool)], first_vis: usize, quality: u8, pack: PackFn, compress: CompressFn) -> Result<(Vec<Option<Enc>>, usize), BlpError> {
-    let mut rgba_cur = base_rgba.clone();
-    let mut enc_by_slot: Vec<Option<Enc>> = vec![None; MAX_MIPS];
-    let mut slot_count = 0usize;
-
-    for (lvl, &(dw, dh, vis)) in dims.iter().enumerate() {
-        if lvl > 0 {
-            let dyn1 = DynamicImage::ImageRgba8(rgba_cur).resize_exact(dw, dh, FilterType::Lanczos3);
-            rgba_cur = dyn1.to_rgba8();
-        }
-        if lvl < first_vis {
-            continue;
-        }
-
-        let slot = lvl - first_vis;
-        if slot >= MAX_MIPS {
-            break;
-        }
-        slot_count = slot_count.max(slot + 1);
-
-        if !vis {
-            enc_by_slot[slot] = None;
-            continue;
-        }
-
-        let (packed, pitch) = pack(&rgba_cur);
-        let (wz, hz) = (rgba_cur.width() as usize, rgba_cur.height() as usize);
-        let jpeg_raw = compress(&packed, wz, hz, pitch, quality as i32)?;
-
-        let (head_len, _scan_len) = split_header_and_scan(&jpeg_raw)?;
-        // минимальная уборка мусора: выкидываем APPn/COM и двигаем SOF перед SOS
-        let header_clean = rebuild_header_min(&jpeg_raw[..head_len])?;
-        let mut rebuilt = Vec::with_capacity(jpeg_raw.len());
-        rebuilt.extend_from_slice(&header_clean);
-        rebuilt.extend_from_slice(&jpeg_raw[head_len..]); // scan + EOI
-
-        let (h2, _s2) = split_header_and_scan(&rebuilt)?;
-        enc_by_slot[slot] = Some(Enc { data: rebuilt, sl: Slice { head_len: h2 } });
-    }
-
-    if enc_by_slot
-        .get(0)
-        .and_then(|x| x.as_ref())
-        .is_none()
-    {
-        return Err(BlpError::new("first_visible_slot_missing"));
-    }
-    Ok((enc_by_slot, slot_count))
-}
-
-// ============ TurboJPEG обёртки ============
-
-pub(crate) fn tj3_base_config(handle: raw::tjhandle, q: i32) -> Result<(), BlpError> {
-    unsafe {
-        if raw::tj3Set(handle, raw::TJPARAM_TJPARAM_QUALITY as libc::c_int, q) != 0 {
-            return Err(tj3_err(handle, "tj3.quality"));
-        }
-        if raw::tj3Set(handle, raw::TJPARAM_TJPARAM_SUBSAMP as libc::c_int, raw::TJSAMP_TJSAMP_444 as libc::c_int) != 0 {
-            return Err(tj3_err(handle, "tj3.subsamp"));
-        }
-        if raw::tj3Set(handle, raw::TJPARAM_TJPARAM_OPTIMIZE as libc::c_int, 0) != 0 {
-            return Err(tj3_err(handle, "tj3.optimize"));
-        }
-        Ok(())
-    }
-}
-
-// ============ Мелкие общие утилиты ============
-
-#[derive(Clone)]
-struct Slice {
-    head_len: usize,
-}
 #[derive(Clone)]
 struct Enc {
     data: Vec<u8>,
     sl: Slice,
 }
 
-fn build_dims_and_first_vis(rgba0: &RgbaImage, mip_visible: &[bool]) -> Result<(Vec<(u32, u32, bool)>, usize), BlpError> {
-    let (mut w, mut h) = (rgba0.width(), rgba0.height());
-    let mut dims: Vec<(u32, u32, bool)> = Vec::with_capacity(MAX_MIPS);
-    for i in 0..MAX_MIPS {
-        let vis = mip_visible
-            .get(i)
-            .copied()
-            .unwrap_or(true);
-        dims.push((w, h, vis));
-        if w == 1 && h == 1 {
-            break;
+#[derive(Clone)]
+struct Slice {
+    head_len: usize,
+}
+
+impl ImageBlp {
+    pub fn encode_blp(&self, quality: u8, mip_visible: &[bool]) -> Result<EncoderCtx, BlpError> {
+        // 0) базовый мип
+        let base: RgbaImage = self
+            .mipmaps
+            .get(0)
+            .and_then(|m| m.image.clone())
+            .ok_or_else(|| BlpError::new("no_base_image"))?;
+
+        // 1) есть ли альфа?
+        let has_alpha = base.pixels().any(|p| p.0[3] != 255);
+
+        // 3) локально считаем размеры всех мипов и first_vis (без отдельных функций)
+        let (mut w, mut h) = (base.width(), base.height());
+        let mut dims: Vec<(u32, u32, bool)> = Vec::with_capacity(MAX_MIPS);
+        for i in 0..MAX_MIPS {
+            let vis = mip_visible
+                .get(i)
+                .copied()
+                .unwrap_or(true);
+            dims.push((w, h, vis));
+            if w == 1 && h == 1 {
+                break;
+            }
+            w = (w / 2).max(1);
+            h = (h / 2).max(1);
         }
-        w = (w / 2).max(1);
-        h = (h / 2).max(1);
+        let first_vis = dims
+            .iter()
+            .position(|&(_, _, v)| v)
+            .ok_or_else(|| BlpError::new("no_visible_mips_after_mask"))?;
+
+        // 4) кодируем видимые уровни (всё здесь)
+        let mut rgba_cur = base.clone();
+        let mut enc_by_slot: Vec<Option<Enc>> = vec![None; MAX_MIPS];
+        let mut slot_count = 0usize;
+
+        for (lvl, &(dw, dh, vis)) in dims.iter().enumerate() {
+            if lvl > 0 {
+                let dyn1 = DynamicImage::ImageRgba8(rgba_cur).resize_exact(dw, dh, FilterType::Lanczos3);
+                rgba_cur = dyn1.to_rgba8();
+            }
+            if lvl < first_vis {
+                continue;
+            }
+
+            let slot = lvl - first_vis;
+            if slot >= MAX_MIPS {
+                break;
+            }
+            slot_count = slot_count.max(slot + 1);
+
+            if !vis {
+                enc_by_slot[slot] = None;
+                continue;
+            }
+
+            let (wz, hz) = (rgba_cur.width() as usize, rgba_cur.height() as usize);
+            let src = &rgba_cur.as_raw();
+            let (packed, pitch) = if has_alpha {
+                let mut out = vec![0u8; wz * hz * 4];
+                for (dst, px) in out
+                    .chunks_exact_mut(4)
+                    .zip(src.chunks_exact(4))
+                {
+                    dst[0] = 255u8.saturating_sub(px[0]); // C = 255-R
+                    dst[1] = 255u8.saturating_sub(px[1]); // M = 255-G
+                    dst[2] = 255u8.saturating_sub(px[2]); // Y = 255-B
+                    dst[3] = 255u8.saturating_sub(px[3]); // K = 255-A
+                }
+                (out, wz * 4)
+            } else {
+                let mut out = vec![0u8; wz * hz * 3];
+                for (dst, px) in out
+                    .chunks_exact_mut(3)
+                    .zip(src.chunks_exact(4))
+                {
+                    dst[0] = px[0]; // B
+                    dst[1] = px[1]; // G
+                    dst[2] = px[2]; // R
+                }
+                (out, wz * 3)
+            };
+
+            let handle = unsafe { raw::tj3Init(raw::TJINIT_TJINIT_COMPRESS as libc::c_int) };
+            if handle.is_null() {
+                return Err(BlpError::new("tj3.init"));
+            }
+
+            let jpeg_raw = unsafe {
+                struct Guard(raw::tjhandle);
+                impl Drop for Guard {
+                    fn drop(&mut self) {
+                        if !self.0.is_null() {
+                            unsafe { raw::tj3Destroy(self.0) };
+                        }
+                    }
+                }
+                let _g = Guard(handle);
+
+                if raw::tj3Set(handle, raw::TJPARAM_TJPARAM_QUALITY as libc::c_int, quality as libc::c_int) != 0 {
+                    return Err(tj3_err(handle, "tj3.quality"));
+                }
+                if raw::tj3Set(handle, raw::TJPARAM_TJPARAM_SUBSAMP as libc::c_int, raw::TJSAMP_TJSAMP_444 as libc::c_int) != 0 {
+                    return Err(tj3_err(handle, "tj3.subsamp"));
+                }
+                if raw::tj3Set(handle, raw::TJPARAM_TJPARAM_OPTIMIZE as libc::c_int, 0) != 0 {
+                    return Err(tj3_err(handle, "tj3.optimize"));
+                }
+
+                let mut out_ptr: *mut libc::c_uchar = ptr::null_mut();
+                let mut out_size: raw::size_t = 0;
+
+                if raw::tj3Set(
+                    handle, //
+                    raw::TJPARAM_TJPARAM_COLORSPACE as libc::c_int,
+                    if has_alpha {
+                        raw::TJCS_TJCS_CMYK as libc::c_int //
+                    } else {
+                        raw::TJCS_TJCS_RGB as libc::c_int
+                    },
+                ) != 0
+                {
+                    return Err(tj3_err(handle, "tj3.colorspace"));
+                }
+
+                let r = raw::tj3Compress8(
+                    handle, //
+                    packed.as_ptr(),
+                    wz as libc::c_int,
+                    pitch as libc::c_int,
+                    hz as libc::c_int,
+                    if has_alpha {
+                        raw::TJPF_TJPF_CMYK as libc::c_int // вход: CMYK
+                    } else {
+                        raw::TJPF_TJPF_BGR as libc::c_int // вход: BGR
+                    },
+                    &mut out_ptr,
+                    &mut out_size,
+                );
+                if r != 0 {
+                    return Err(tj3_err(handle, "tj3.compress"));
+                }
+                let slice = std::slice::from_raw_parts(out_ptr, out_size as usize);
+                let vec = slice.to_vec();
+                raw::tj3Free(out_ptr as *mut libc::c_void);
+                vec
+            };
+
+            let (head_len, _scan_len) = split_header_and_scan(&jpeg_raw)?;
+            // минимальная уборка мусора: выкидываем APPn/COM и двигаем SOF перед SOS
+            let header_clean = rebuild_header_min(&jpeg_raw[..head_len])?;
+            let mut rebuilt = Vec::with_capacity(jpeg_raw.len());
+            rebuilt.extend_from_slice(&header_clean);
+            rebuilt.extend_from_slice(&jpeg_raw[head_len..]); // scan + EOI
+
+            let (h2, _s2) = split_header_and_scan(&rebuilt)?;
+            enc_by_slot[slot] = Some(Enc { data: rebuilt, sl: Slice { head_len: h2 } });
+        }
+
+        if enc_by_slot
+            .get(0)
+            .and_then(|x| x.as_ref())
+            .is_none()
+        {
+            return Err(BlpError::new("first_visible_slot_missing"));
+        }
+
+        // 5) финальная сборка контейнера BLP
+        let bytes = finalize_blp_write(enc_by_slot, slot_count, &dims, first_vis, has_alpha)?;
+        Ok(EncoderCtx { bytes })
     }
-    let first_vis = dims
-        .iter()
-        .position(|&(_, _, v)| v)
-        .ok_or_else(|| BlpError::new("no_visible_mips_after_mask"))?;
-    Ok((dims, first_vis))
 }
 
 fn be_u16(b: &[u8]) -> Result<usize, BlpError> {
@@ -228,7 +259,7 @@ fn split_header_and_scan(jpeg: &[u8]) -> Result<(usize, usize), BlpError> {
     }
 }
 
-fn common_prefix(heads: &[&[u8]]) -> Vec<u8> {
+fn header_prefix(heads: &[&[u8]]) -> Vec<u8> {
     if heads.is_empty() {
         return Vec::new();
     }
@@ -260,7 +291,7 @@ fn finalize_blp_write(enc_by_slot: Vec<Option<Enc>>, slot_count: usize, dims: &[
     if heads.is_empty() {
         return Err(BlpError::new("no_encoded_heads"));
     }
-    let mut common_header = common_prefix(&heads);
+    let mut common_header = header_prefix(&heads);
     if common_header.len() < 2 || common_header[0] != 0xFF || common_header[1] != 0xD8 {
         return Err(BlpError::new("bad_common_header"));
     }
@@ -412,4 +443,18 @@ fn rebuild_header_min(header: &[u8]) -> Result<Vec<u8>, BlpError> {
     out.extend_from_slice(&header[sof_s..sof_e]);
     out.extend_from_slice(&header[sos_s..sos_e]);
     Ok(out)
+}
+
+fn tj3_err(handle: raw::tjhandle, key: &'static str) -> BlpError {
+    let msg = unsafe {
+        let p = raw::tj3GetErrorStr(handle);
+        if p.is_null() {
+            "unknown".to_string()
+        } else {
+            CStr::from_ptr(p)
+                .to_string_lossy()
+                .into_owned()
+        }
+    };
+    BlpError::new(key).with_arg("msg", msg)
 }

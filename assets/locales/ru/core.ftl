@@ -43,7 +43,7 @@ hint-mips-all = Включить все уровни мипов
 hint-mips-none = Отключить все уровни мипов
 blp-quality = Качество BLP
 blp-quality-hint = JPEG-качество при экспорте текстур BLP
-no-visible-mip-hint = Ни один мип не выбран. Используйте панель справа, чтобы выбрать уровни.
+no-visible-mip-hint = Ни один мип не выбран.\nИспользуйте панель справа, чтобы выбрать уровни.
 
 blp-texture = BLP текстура
 png-image = PNG изображение

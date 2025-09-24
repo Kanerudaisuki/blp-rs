@@ -43,7 +43,7 @@ hint-mips-all = Enable all mip levels
 hint-mips-none = Disable all mip levels
 blp-quality = BLP quality
 blp-quality-hint = JPEG quality used when exporting BLP textures
-no-visible-mip-hint = No mip level is selected. Use the right panel to choose one.
+no-visible-mip-hint = No mip level is selected.\nUse the right panel to choose one.
 
 blp-texture = BLP texture
 png-image = PNG image

@@ -28,8 +28,8 @@ impl ImageBlp {
         let alpha_bits = self.alpha_bits;
 
         for i in 0..self.mipmaps.len() {
-            let off = self.mipmap_offsets[i] as usize;
-            let len = self.mipmap_lengths[i] as usize;
+            let off = self.mipmaps[i].offset;
+            let len = self.mipmaps[i].length;
             if len == 0 {
                 continue;
             }
