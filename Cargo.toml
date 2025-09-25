@@ -13,6 +13,10 @@ exclude = [
     "preview/*",
     "test-data/*",
     "assets/fonts/*",
+    "assets/icon.png",
+    "assets/generated/icons/*",
+    "assets/generated/app.ico",
+    "assets/generated/AppIcon.icns",
     "*.sh",
 ]
 
