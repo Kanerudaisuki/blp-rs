@@ -14,8 +14,8 @@ pub mod to_blp {
     fn to_blp_encode_and_run_ui() -> Result<(), BlpError> {
         // --- пути ---
         let root = Path::new("/Users/nazarpunk/Downloads/_blp");
-        //let a_png = root.join("bb.png");
-        let a_png = root.join("logo.png");
+        let a_png = root.join("bb.png");
+        //let a_png = root.join("logo.png");
         let b_blp = root.join("bb.blp");
         assert!(a_png.exists(), "Missing input PNG: {}", a_png.display());
 

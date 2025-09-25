@@ -212,46 +212,20 @@ impl ImageBlp {
             }
         }
 
-        #[derive(Clone)]
-        struct Block<'a> {
-            len: u32,
-            bytes: &'a [u8],
-        }
-        let mut blocks: Vec<Option<Block>> = vec![None; out_mips.len()];
-        for (i, m) in out_mips.iter().enumerate() {
-            if !m.encoded.is_empty() {
-                let head = &m.encoded[..m.head_len];
-                let trimmed = &head[common_header.len()..];
-                let payload = &m.encoded[head.len() - trimmed.len()..];
-                blocks[i] = Some(Block { len: payload.len() as u32, bytes: payload });
-            }
+        #[inline]
+        fn write_u32_le_at(buf: &mut Vec<u8>, pos: usize, v: u32) {
+            buf[pos..pos + 4].copy_from_slice(&v.to_le_bytes());
         }
 
         let base_w = out_mips[0].w;
         let base_h = out_mips[0].h;
+
         let flags: u32 = if has_alpha { 8 } else { 0 };
         let compression: u32 = 0; // JPEG
         let extra_field: u32 = 0;
         let has_mipmaps: u32 = 1;
 
-        let mut offsets = [0u32; MAX_MIPS];
-        let mut sizes = [0u32; MAX_MIPS];
-
-        let blp_header_size = 4 + 4 + 4 + 4 + 4 + 4 + 4 + (MAX_MIPS as u32) * 4 + (MAX_MIPS as u32) * 4;
-        let jpeg_header_block_size = 4 + (common_header.len() as u32);
-
-        let mut cur = blp_header_size + jpeg_header_block_size;
-        for i in 0..MAX_MIPS.min(blocks.len()) {
-            if let Some(b) = &blocks[i] {
-                offsets[i] = cur;
-                sizes[i] = b.len;
-                cur = cur
-                    .checked_add(b.len)
-                    .ok_or_else(|| BlpError::new("offset_overflow"))?;
-            }
-        }
-
-        let mut bytes = Vec::with_capacity(cur as usize);
+        let mut bytes = Vec::new();
         bytes.extend_from_slice(b"BLP1");
         bytes.extend_from_slice(&compression.to_le_bytes());
         bytes.extend_from_slice(&flags.to_le_bytes());
@@ -259,18 +233,47 @@ impl ImageBlp {
         bytes.extend_from_slice(&base_h.to_le_bytes());
         bytes.extend_from_slice(&extra_field.to_le_bytes());
         bytes.extend_from_slice(&has_mipmaps.to_le_bytes());
-        for &off in &offsets {
-            bytes.extend_from_slice(&off.to_le_bytes());
-        }
-        for &sz in &sizes {
-            bytes.extend_from_slice(&sz.to_le_bytes());
-        }
-        bytes.extend_from_slice(&(common_header.len() as u32).to_le_bytes());
+
+        // плейсхолдеры для offsets/sizes
+        let pos_offsets = bytes.len();
+        bytes.resize(bytes.len() + MAX_MIPS * 4, 0);
+
+        let pos_sizes = bytes.len();
+        bytes.resize(bytes.len() + MAX_MIPS * 4, 0);
+
+        // общий JPEG header
+        let jpeg_header_size: u32 = common_header
+            .len()
+            .try_into()
+            .map_err(|_| BlpError::new("jpeg_header_too_large"))?;
+
+        bytes.extend_from_slice(&jpeg_header_size.to_le_bytes());
         bytes.extend_from_slice(&common_header);
-        bytes.extend_from_slice(b"RAFT");
-        for i in 0..MAX_MIPS.min(blocks.len()) {
-            if let Some(b) = &blocks[i] {
-                bytes.extend_from_slice(b.bytes);
+        bytes.extend_from_slice(b"RAFT"); // твой спец-маркер
+
+        // пишем payload’ы и сразу бэкфиллим offset/size
+        for i in 0..MAX_MIPS.min(out_mips.len()) {
+            let m = &out_mips[i];
+            if !m.encoded.is_empty() {
+                debug_assert!(m.head_len >= common_header.len());
+                debug_assert!(&m.encoded[..common_header.len()] == &common_header[..]);
+
+                let payload = &m.encoded[common_header.len()..];
+
+                let off = bytes.len();
+                let sz = payload.len();
+
+                if off > u32::MAX as usize {
+                    return Err(BlpError::new("offset_too_large"));
+                }
+                if sz > u32::MAX as usize {
+                    return Err(BlpError::new("payload_too_large"));
+                }
+
+                write_u32_le_at(&mut bytes, pos_offsets + (i << 2), off as u32);
+                write_u32_le_at(&mut bytes, pos_sizes + (i << 2), sz as u32);
+
+                bytes.extend_from_slice(payload);
             }
         }
 
@@ -282,6 +285,7 @@ impl ImageBlp {
         })
     }
 }
+
 fn be_u16(b: &[u8]) -> Result<usize, BlpError> {
     if b.len() < 2 {
         return Err(BlpError::new("jpeg.len"));
