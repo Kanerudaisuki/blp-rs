@@ -7,7 +7,7 @@ pub fn to_blp(input: &Path, output: Option<&PathBuf>) -> Result<(), BlpError> {
     input.try_exists()?;
     let data = fs::read(input)?;
     let mut img = ImageBlp::from_buf(&data)?;
-    img.decode(&data)?;
+    img.decode(&data, &[])?;
     
     let out_path: PathBuf = match output {
         Some(p) => p.clone(),

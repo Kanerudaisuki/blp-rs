@@ -16,8 +16,8 @@ pub struct ImageBlp {
     pub has_mips: u8,
     pub width: u32,
     pub height: u32,
-    pub extra: u32,                      // meaningful only if version <= BLP1
-    pub has_mipmaps: u32,                // meaningful only if version <= BLP1 or >= BLP2
+    pub extra: u32,       // meaningful only if version <= BLP1
+    pub has_mipmaps: u32, // meaningful only if version <= BLP1 or >= BLP2
     //
     pub mipmaps: Vec<Mipmap>,
     pub holes: usize,
@@ -36,13 +36,17 @@ impl ImageBlp {
         }
     }
 
-    pub fn decode(&mut self, buf: &[u8]) -> Result<(), BlpError> {
+    /// Top-level decode entry.
+    ///
+    /// `mip_visible[i] == false` → skip decoding for mip `i`.
+    /// Missing indices are treated as `true`.
+    pub fn decode(&mut self, buf: &[u8], mip_visible: &[bool]) -> Result<(), BlpError> {
         match self.source {
             SourceKind::Blp => match self.texture_type {
-                TextureType::DIRECT => self.decode_direct(buf),
-                TextureType::JPEG => self.decode_jpeg(buf),
+                TextureType::DIRECT => self.decode_direct(buf, mip_visible),
+                TextureType::JPEG => self.decode_jpeg(buf, mip_visible),
             },
-            SourceKind::Image => self.decode_image(buf),
+            SourceKind::Image => self.decode_image(buf, mip_visible),
         }
     }
 }

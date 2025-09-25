@@ -1,8 +1,9 @@
 use crate::error::error::BlpError;
 use crate::ui::viewer::app::App;
-use eframe::egui::{ViewportBuilder, vec2};
+use eframe::egui::{IconData, ViewportBuilder, vec2};
 use eframe::{NativeOptions, Renderer};
 use std::path::PathBuf;
+use std::sync::Arc;
 
 #[inline]
 fn report_error(msg: &str) {
@@ -29,6 +30,11 @@ pub fn run_native(path: Option<PathBuf>) -> Result<(), BlpError> {
                 clamp_size_to_monitor_size: Some(true),
                 decorations: Some(false),
                 resizable: Some(true),
+                icon: Some(Arc::new({
+                    let img = image::load_from_memory(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/icon.png")))?.into_rgba8();
+                    let (w, h) = img.dimensions();
+                    IconData { rgba: img.into_raw(), width: w, height: h }
+                })),
                 has_shadow: Some(true),
                 ..Default::default()
             },

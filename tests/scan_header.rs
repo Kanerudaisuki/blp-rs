@@ -133,7 +133,7 @@ mod scan_header {
             };
 
             // декодируем (PNG будут доступны для экспортов)
-            if let Err(e) = img.decode(&data) {
+            if let Err(e) = img.decode(&data, &[]) {
                 eprintln!("❌ Failed to decode {}: {e}", path.display());
                 continue;
             }

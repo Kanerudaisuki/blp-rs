@@ -23,7 +23,7 @@ pub mod to_blp {
         // --- PNG -> ImageBlp (разметка + декодирование) ---
         let png_bytes = fs::read(&a_png)?;
         let mut img = ImageBlp::from_buf(&png_bytes)?;
-        img.decode(&png_bytes)?;
+        img.decode(&png_bytes, &[])?;
 
         // --- encode BLP ---
         let quality = 85u8;

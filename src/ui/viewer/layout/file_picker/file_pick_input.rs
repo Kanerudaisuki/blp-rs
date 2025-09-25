@@ -19,7 +19,7 @@ impl FilePickInput {
     pub fn decode(self) -> Result<ImageBlp, BlpError> {
         let data = self.into_bytes()?;
         let mut img = ImageBlp::from_buf(&data)?;
-        img.decode(&data)?;
+        img.decode(&data, &[])?;
         Ok(img)
     }
 }
