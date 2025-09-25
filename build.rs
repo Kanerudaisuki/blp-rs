@@ -5,7 +5,7 @@ mod icons;
 mod fonts;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    icons::run_icons()?;
+    //icons::run_icons()?;
     fonts::run_fonts()?;
     Ok(())
 }
