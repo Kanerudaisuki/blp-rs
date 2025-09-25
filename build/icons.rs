@@ -1,5 +1,5 @@
 // build/icons.rs
-
+#[cfg(feature = "ui")]
 use std::path::{Path, PathBuf};
 
 // ===== единственная публичная точка входа =====
