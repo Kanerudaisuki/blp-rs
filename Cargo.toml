@@ -41,6 +41,7 @@ sha1 = "0.11.0-rc.2"
 sys-locale = { version = "0.3.2", optional = true }
 turbojpeg = "1.3.3"
 walkdir = "2.5.0"
+chrono = "0.4.42"
 
 [[bin]]
 name = "blp-cli"
@@ -75,6 +76,7 @@ icon = [
 image = "0.25.8"
 
 [target.'cfg(target_os = "windows")'.build-dependencies]
+chrono = "0.4.42"
 ico = "0.4.0"
 winresource = "0.1.23"
 

@@ -193,17 +193,96 @@ fn generate_linux_hicolor(out_dir: &Path, img: &image::RgbaImage, sizes: &[u32])
 // только под Windows реально вшиваем ресурс в exe
 #[cfg(all(feature = "ui", target_os = "windows"))]
 fn embed_windows_resources(out_dir: &Path) {
+    use chrono::Datelike;
+    use std::{env, io};
+
+    // ---------- helper: версия -> N.N.N.N ----------
+    fn to_winver(v: &str) -> String {
+        // допускаем "1.2.3", "1.2.3-beta", "2025.09"
+        let mut parts: Vec<u16> = Vec::with_capacity(4);
+        for p in v.split('.') {
+            let num: u16 = p
+                .chars()
+                .take_while(|c| c.is_ascii_digit())
+                .collect::<String>()
+                .parse()
+                .unwrap_or(0);
+            parts.push(num);
+            if parts.len() == 4 {
+                break;
+            }
+        }
+        while parts.len() < 4 {
+            parts.push(0);
+        }
+        format!("{}.{}.{}.{}", parts[0], parts[1], parts[2], parts[3])
+    }
+
+    // ---------- собрать пути/переменные ----------
     let ico_path = out_dir.join("app.ico");
-    let Some(ico_str) = ico_path.to_str() else {
-        eprintln!("app.ico path is not valid UTF-8; skipping Windows resource embedding");
-        return;
+    if !ico_path.exists() {
+        eprintln!("cargo:warning=embed_windows_resources: '{}' not found; ICON resource will be missing", ico_path.display());
+    }
+
+    let pkg_name = env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "app".to_string());
+    let pkg_desc = env::var("CARGO_PKG_DESCRIPTION").unwrap_or_default();
+    let pkg_version_raw = env::var("CARGO_PKG_VERSION").unwrap_or_else(|_| "0.0.0".to_string());
+    let bin_name = env::var("CARGO_BIN_NAME").unwrap_or_else(|_| pkg_name.clone());
+
+    let file_ver = to_winver(&pkg_version_raw);
+    if file_ver.ends_with(".0.0") && pkg_version_raw.matches('.').count() < 3 {
+        eprintln!("cargo:warning=embed_windows_resources: normalized Product/FileVersion '{}' -> '{}'", pkg_version_raw, file_ver);
+    }
+
+    // Авторские права: из AUTHORS, если есть
+    let legal = match env::var("CARGO_PKG_AUTHORS") {
+        Ok(a) if !a.trim().is_empty() => format!("© {} {}", chrono::Utc::now().year(), a),
+        _ => format!("© {} {}", chrono::Utc::now().year(), "Author"),
     };
+
+    // ---------- собрать ресурс ----------
     let mut res = winresource::WindowsResource::new();
-    res.set_icon(ico_str);
-    // опциональные поля:
-    // res.set("FileDescription", "WarRaft BLP tool");
-    // res.set("ProductName", "WarRaft BLP");
-    if let Err(err) = res.compile() {
-        eprintln!("Failed to embed Windows icon resource: {err}");
+
+    // ИКОНКА
+    // ИКОНКА
+    if let Some(p) = ico_path.to_str() {
+        res.set_icon(p); // set_icon возвращает &mut WindowsResource, но мы его никуда не возвращаем
+    } else {
+        eprintln!("cargo:warning=embed_windows_resources: app.ico path is not valid UTF-8; skipping icon");
+    }
+
+    // VERSIONINFO — эти два поля обязательны, иначе версия не создастся
+    res.set("FileVersion", &file_ver);
+    res.set("ProductVersion", &file_ver);
+
+    // Строковая таблица
+    if !pkg_desc.is_empty() {
+        res.set("FileDescription", &pkg_desc);
+    }
+    res.set("ProductName", &pkg_name);
+    res.set("InternalName", &bin_name);
+    res.set("OriginalFilename", &format!("{}.exe", bin_name));
+    res.set("CompanyName", ""); // если нужно — подставь свою орг-строку
+    res.set("LegalCopyright", &legal);
+
+    // Можно явно выставить язык строк (0x0419=ru-RU, 0x0409=en-US)
+    // res.set_language(0x0419);
+
+    // ---------- компиляция ----------
+    match res.compile() {
+        Ok(_) => {
+            // полезно видеть, что именно мы вшили
+            println!("cargo:warning=ICON embedded: {}", ico_path.display());
+            println!("cargo:warning=VERSIONINFO ProductName='{}' FileVersion='{}'", pkg_name, file_ver);
+        }
+        Err(err) => {
+            // подробный разбор частых причин
+            eprintln!("cargo:warning=embed_windows_resources: failed to compile resources: {err}");
+            if err.kind() == io::ErrorKind::NotFound {
+                eprintln!("cargo:warning=Hint: On Windows/MSVC, ensure 'rc.exe' is available (Visual Studio Build Tools).");
+                eprintln!("cargo:warning=Hint: On cross-compile setups, install 'llvm-rc' or 'windres' and put it in PATH.");
+            }
+            // не паникуем: пусть билд идёт без ресурса
+        }
     }
 }
