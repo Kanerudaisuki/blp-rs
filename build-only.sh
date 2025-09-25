@@ -20,6 +20,7 @@ build_variant() {
     cargo_features+=(--features "$feature_spec")
   fi
 
+  # shellcheck disable=SC2028
   echo "\n=== 🔨 Building $bin_name (features: $feature_label, packaging: $packaging) ==="
 
   # ===== macOS universal =====
@@ -39,6 +40,7 @@ build_variant() {
 
   if [[ "$packaging" == "app" ]]; then
     local app_name="$PROJECT_NAME"
+    # shellcheck disable=SC2155
     local app_tmp="$(mktemp -d)/$app_name-macos.app"
     local app_macos="$app_tmp/Contents/MacOS"
     local app_res="$app_tmp/Contents/Resources"
@@ -107,6 +109,7 @@ while IFS= read -r spec; do
 done <<<"$BUILD_VARIANTS"
 
 # --- checksums ---
+# shellcheck disable=SC2028
 echo "\n🔐 Checksums…"
 (
   cd "$DIST_DIR"

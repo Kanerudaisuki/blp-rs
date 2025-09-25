@@ -18,7 +18,7 @@ pub fn run_native(path: Option<PathBuf>) -> Result<(), BlpError> {
                 resizable: Some(true),
                 ..Default::default()
             },
-            renderer: Renderer::Wgpu,
+            renderer: Renderer::Glow,
             ..Default::default()
         },
         Box::new(move |cc| -> Result<Box<dyn eframe::App>, _> {
