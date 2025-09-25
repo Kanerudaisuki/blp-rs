@@ -35,9 +35,6 @@ impl App {
         // 1) Ставим шрифты ДО первого кадра
         install_fonts(ctx);
 
-        // (опционально) Явный масштаб, если надо:
-        ctx.set_pixels_per_point(1.0);
-
         // 2) Прогреваем атлас одним пустым кадром (обход глюка на Win11)
         ctx.begin_pass(RawInput::default());
         let _ = ctx.end_pass();
