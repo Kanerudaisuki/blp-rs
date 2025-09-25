@@ -42,7 +42,7 @@ impl App {
         ctx.begin_pass(RawInput::default());
         let _ = ctx.end_pass();
 
-        let app = Self {
+        Self {
             lng: load_prefs().lang,
             maximized: false, //
             bg_seed: (nanos as u64) ^ ((nanos >> 64) as u64),
@@ -55,8 +55,6 @@ impl App {
             mip_visible: [true; MAX_MIPS],
             save_same_dir: save_same_dir_load(),
             export_quality: export_quality_load(),
-        };
-        install_fonts(ctx);
-        app
+        }
     }
 }
