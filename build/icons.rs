@@ -169,7 +169,7 @@ fn generate_linux_hicolor(out_dir: &Path, img: &image::RgbaImage, sizes: &[u32])
         let path = dir.join("blp.png");
         let mut buf = Vec::new();
         image::DynamicImage::ImageRgba8(resized)
-            .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png)
+            .write_to(&mut io::Cursor::new(&mut buf), image::ImageFormat::Png)
             .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("encode {}: {e}", path.display())))?;
         let mut f = fs::File::create(&path).map_err(|e| io::Error::new(e.kind(), format!("create {}: {e}", path.display())))?;
         use std::io::Write;

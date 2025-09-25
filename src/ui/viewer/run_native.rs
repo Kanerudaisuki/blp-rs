@@ -29,9 +29,11 @@ pub fn run_native(path: Option<PathBuf>) -> Result<(), BlpError> {
                 clamp_size_to_monitor_size: Some(true),
                 decorations: Some(false),
                 resizable: Some(true),
+                has_shadow: Some(true),
                 ..Default::default()
             },
-            renderer: Renderer::Glow,
+            renderer: Renderer::Wgpu,
+            vsync: true,
             ..Default::default()
         },
         Box::new(move |cc| -> Result<Box<dyn eframe::App>, _> {

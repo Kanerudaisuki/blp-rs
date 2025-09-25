@@ -1,11 +1,11 @@
-use crate::error::error::BlpError;
 use crate::core::image::{ImageBlp, MAX_MIPS};
+use crate::error::error::BlpError;
 use crate::ui::fonts::install_fonts;
 use crate::ui::i18n::lng_list::LngList;
 use crate::ui::i18n::prefs::load_prefs;
 use crate::ui::viewer::layout::file_saver::export_quality::export_quality_load;
 use crate::ui::viewer::layout::file_saver::save_same_dir::save_same_dir_load;
-use eframe::egui::{Context, TextureHandle};
+use eframe::egui::{Context, RawInput, TextureHandle};
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -31,6 +31,16 @@ impl App {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_else(|_| Duration::from_secs(0))
             .as_nanos();
+
+        // 1) Ставим шрифты ДО первого кадра
+        install_fonts(ctx);
+
+        // (опционально) Явный масштаб, если надо:
+        ctx.set_pixels_per_point(1.0);
+
+        // 2) Прогреваем атлас одним пустым кадром (обход глюка на Win11)
+        ctx.begin_pass(RawInput::default());
+        let _ = ctx.end_pass();
 
         let app = Self {
             lng: load_prefs().lang,
