@@ -75,17 +75,13 @@ icon = [
 [build-dependencies]
 image = "0.25.8"
 chrono = "0.4.42"
-
-[target.'cfg(target_os = "windows")'.build-dependencies]
 ico = "0.4.0"
 winresource = "0.1.23"
+icns = "0.3.1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = "0.2.7"
 cocoa = "0.26.1"
-
-[target.'cfg(target_os = "macos")'.build-dependencies]
-icns = "0.3.1"
 
 [profile.release]
 lto = "thin"        # LTO включено только для финальной сборки

@@ -1,50 +1,41 @@
+// build/icons.rs
 use std::error::Error;
+use std::{fs, path::Path};
 
-/// Returns a human-readable, emoji-rich report per OS,
-/// or None when feature `ui` is OFF (in build scripts, features arrive via env).
+/// Returns a human-readable, emoji-rich report for the *target* OS,
+/// or None when feature `ui` is OFF (features propagate to build.rs via env).
 pub fn run_icons() -> Result<Option<String>, Box<dyn Error>> {
-    // Respect the main crate's `ui` feature (#[cfg(feature)] doesn't work in build scripts).
+    // Respect the main crate's `ui` feature (#[cfg(feature)] doesn't apply in build scripts).
     if std::env::var_os("CARGO_FEATURE_UI").is_none() {
         return Ok(None);
     }
-
-    use std::{fs, path::Path};
-    let mut log = Vec::<String>::new();
 
     let src_icon = Path::new("assets/icon.png");
     let out_dir = Path::new("assets/generated");
     fs::create_dir_all(out_dir)?;
 
-    // ---- OS branches (exactly one compiles) ----
-    #[cfg(target_os = "windows")]
-    {
-        log.push(do_windows(src_icon, out_dir)?);
-    }
+    // IMPORTANT: use target triple from Cargo to dispatch
+    let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_else(|_| std::env::consts::OS.to_string());
 
-    #[cfg(target_os = "macos")]
-    {
-        log.push(do_macos(src_icon, out_dir)?);
-    }
+    let report = match target_os.as_str() {
+        "windows" => do_windows(src_icon, out_dir)?,
+        "macos" => do_macos(src_icon, out_dir)?,
+        // treat everything else as Linux/XDG
+        _ => do_linux(src_icon, out_dir)?,
+    };
 
-    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
-    {
-        log.push(do_linux(src_icon, out_dir)?);
-    }
-
-    let report = if log.is_empty() { "🖼️  Icons: nothing to do".to_string() } else { log.join("\n") };
     Ok(Some(report))
 }
 
 /* ------------------- WINDOWS ------------------- */
 
-#[cfg(target_os = "windows")]
-fn do_windows(src_icon: &std::path::Path, out_dir: &std::path::Path) -> Result<String, Box<dyn Error>> {
-    use std::{fs, io};
+fn do_windows(src_icon: &Path, out_dir: &Path) -> Result<String, Box<dyn Error>> {
+    use std::io;
 
     let mut actions = Vec::<String>::new();
     let ico_path = out_dir.join("app.ico");
 
-    // 1) Generate app.ico only if missing and we have a source PNG.
+    // Generate app.ico only if missing and we have a source PNG.
     if !ico_path.exists() && src_icon.exists() {
         let data = fs::read(src_icon).map_err(|e| io::Error::new(e.kind(), format!("read {}: {e}", src_icon.display())))?;
         let img = image::load_from_memory(&data)
@@ -62,16 +53,15 @@ fn do_windows(src_icon: &std::path::Path, out_dir: &std::path::Path) -> Result<S
         actions.push("⏭️  Skipped ICO generation (assets/icon.png not found)".into());
     }
 
-    // 2) Always embed VERSIONINFO (and ICON if present).
+    // Always embed VERSIONINFO (and ICON if present).
     actions.push(embed_windows_resources(out_dir));
 
     Ok(format!("🪟 Windows:\n  - {}", actions.join("\n  - ")))
 }
 
-#[cfg(target_os = "windows")]
-fn generate_ico(out_dir: &std::path::Path, img: &image::RgbaImage, sizes: &[u32]) -> Result<(), Box<dyn Error>> {
+fn generate_ico(out_dir: &Path, img: &image::RgbaImage, sizes: &[u32]) -> Result<(), Box<dyn Error>> {
     use ico::{IconDir, IconImage, ResourceType};
-    use std::{fs, io};
+    use std::io;
 
     let mut dir = IconDir::new(ResourceType::Icon);
     for &s in sizes {
@@ -87,11 +77,9 @@ fn generate_ico(out_dir: &std::path::Path, img: &image::RgbaImage, sizes: &[u32]
     Ok(())
 }
 
-#[cfg(target_os = "windows")]
-fn embed_windows_resources(out_dir: &std::path::Path) -> String {
-    use std::{env, io, path::Path};
+fn embed_windows_resources(out_dir: &Path) -> String {
+    use std::{env, io, path::Path as StdPath};
 
-    // Normalize semver-like "x.y.z[-tag]" → "x.y.z.0"
     fn normalize_version(v: &str) -> String {
         let mut parts = [0u16; 4];
         let mut i = 0usize;
@@ -127,18 +115,14 @@ fn embed_windows_resources(out_dir: &std::path::Path) -> String {
     let ico_path = out_dir.join("app.ico");
     let mut res = winresource::WindowsResource::new();
 
-    // ICON (only if present)
     if let Some(p) = ico_path.to_str() {
-        if Path::new(p).exists() {
+        if StdPath::new(p).exists() {
             res.set_icon(p);
         }
     }
 
-    // VERSIONINFO (required numeric fields)
     res.set("FileVersion", &ver);
     res.set("ProductVersion", &ver);
-
-    // String table for Explorer
     res.set("FileDescription", &pkg_desc);
     res.set("ProductName", &pkg_name);
     res.set("CompanyName", &company);
@@ -147,7 +131,7 @@ fn embed_windows_resources(out_dir: &std::path::Path) -> String {
     let legal = if pkg_auth.is_empty() { format!("© {}", company) } else { format!("© {}", pkg_auth) };
     res.set("LegalCopyright", &legal);
 
-    // Language block (ru-RU = 0x0419; en-US = 0x0409)
+    // Use en-US for VERSIONINFO; app itself handles i18n.
     res.set_language(0x0409);
 
     match res.compile() {
@@ -155,7 +139,7 @@ fn embed_windows_resources(out_dir: &std::path::Path) -> String {
         Err(e) => {
             let mut msg = format!("💥 Embedding resources FAILED: {e}");
             if e.kind() == io::ErrorKind::NotFound {
-                msg.push_str(" [hint: on MSVC ensure rc.exe is in PATH; on cross use llvm-rc/windres]");
+                msg.push_str(" [hint: ensure `rc.exe` on MSVC, or `llvm-rc`/`windres` for cross]");
             }
             msg
         }
@@ -164,10 +148,9 @@ fn embed_windows_resources(out_dir: &std::path::Path) -> String {
 
 /* ------------------- macOS ------------------- */
 
-#[cfg(target_os = "macos")]
-fn do_macos(src_icon: &std::path::Path, out_dir: &std::path::Path) -> Result<String, Box<dyn Error>> {
+fn do_macos(src_icon: &Path, out_dir: &Path) -> Result<String, Box<dyn Error>> {
     use icns::{IconFamily, IconType, Image as IcnsImage, PixelFormat};
-    use std::{fs, io};
+    use std::io;
 
     let icns_path = out_dir.join("AppIcon.icns");
 
@@ -180,7 +163,6 @@ fn do_macos(src_icon: &std::path::Path, out_dir: &std::path::Path) -> Result<Str
         return Ok(format!(" macOS:\n  - {msg}"));
     }
 
-    // Generate .icns from assets/icon.png
     let data = fs::read(src_icon).map_err(|e| io::Error::new(e.kind(), format!("read {}: {e}", src_icon.display())))?;
     let img = image::load_from_memory(&data)
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("decode {}: {e}", src_icon.display())))?
@@ -239,9 +221,9 @@ fn do_macos(src_icon: &std::path::Path, out_dir: &std::path::Path) -> Result<Str
 
 /* ------------------- LINUX / OTHERS ------------------- */
 
-#[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
-fn do_linux(src_icon: &std::path::Path, out_dir: &std::path::Path) -> Result<String, Box<dyn Error>> {
-    use std::{fs, io, path::PathBuf};
+fn do_linux(src_icon: &Path, out_dir: &Path) -> Result<String, Box<dyn Error>> {
+    use std::io;
+    use std::path::PathBuf;
 
     let sizes = &[16, 32, 48, 64, 128, 256, 512];
     let targets: Vec<PathBuf> = sizes
@@ -258,7 +240,6 @@ fn do_linux(src_icon: &std::path::Path, out_dir: &std::path::Path) -> Result<Str
         return Ok(format!("🐧 Linux:\n  - {msg}"));
     }
 
-    // Generate the hicolor icon set from assets/icon.png
     let data = fs::read(src_icon).map_err(|e| io::Error::new(e.kind(), format!("read {}: {e}", src_icon.display())))?;
     let img = image::load_from_memory(&data)
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("decode {}: {e}", src_icon.display())))?
