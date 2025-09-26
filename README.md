@@ -44,7 +44,7 @@ If a `<COMMAND>` is provided, it always takes precedence over `[PATH]`.
 
 ### `to-blp`
 
-Convert an image (e.g. PNG) into BLP format.
+Convert an image into BLP format.
 
 ```text
 blp to-blp <INPUT> [OUTPUT] [OPTIONS]
