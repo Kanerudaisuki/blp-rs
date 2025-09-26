@@ -17,6 +17,7 @@ exclude = [
     "assets/generated/icons/*",
     "assets/generated/app.ico",
     "assets/generated/AppIcon.icns",
+    "build/build-info.txt",
     "*.sh",
 ]
 
