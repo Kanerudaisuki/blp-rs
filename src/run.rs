@@ -2,8 +2,9 @@
 #[cfg(any(feature = "cli", feature = "ui"))]
 use std::path::PathBuf;
 
-// ===== CLI-only imports =====
-use crate::core::image::ImageBlp;
+// ===== UI imports =====
+#[cfg(feature = "ui")]
+use crate::ui::viewer::run_native::run_native;
 #[cfg(feature = "cli")]
 use {
     crate::cli::command::to_blp::to_blp,
@@ -12,9 +13,6 @@ use {
     crate::error::error::BlpError,
     clap::{Parser, Subcommand, error::ErrorKind},
 };
-// ===== UI imports =====
-#[cfg(feature = "ui")]
-use crate::ui::viewer::run_native::run_native;
 
 // ===== enforce: 'ui' always together with 'cli' =====
 #[cfg(all(feature = "ui", not(feature = "cli")))]
@@ -106,6 +104,7 @@ fn run_cli_command(cmd: Command) -> Result<(), BlpError> {
 /// This function always terminates the process.
 #[cfg(all(feature = "cli", not(feature = "ui")))]
 fn sanity_decode_or_exit(path: PathBuf) -> ! {
+    use crate::core::image::ImageBlp;
     use std::fs;
 
     // Read file

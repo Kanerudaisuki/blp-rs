@@ -40,6 +40,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //    It returns a human-readable per-OS report (emoji included).
     let icons_report = icons::run_icons()?; // Option<String>
 
+    // === 2.1) Skip log if no BLP_BUILD_ID ===
+    let build_id = env::var("BLP_BUILD_ID").unwrap_or_default();
+    if build_id.is_empty() {
+        return Ok(()); // nothing to append
+    }
+
     // 3) Append a new build section to the human-readable log.
     let log_path = Path::new("build/build-info.txt");
     if let Some(dir) = log_path.parent() {
@@ -54,7 +60,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pkg_name = env::var("CARGO_PKG_NAME").unwrap_or_default();
     let pkg_version = env::var("CARGO_PKG_VERSION").unwrap_or_default();
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
-    let build_id = env::var("BLP_BUILD_ID").unwrap_or_default();
     let features: Vec<String> = env::vars()
         .filter(|(k, _)| k.starts_with("CARGO_FEATURE_"))
         .map(|(k, _)| {
@@ -69,9 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ✨ Header (easy to scan)
     writeln!(out, "===== 🛠️  Build @ {} =====", Utc::now())?;
-    if !build_id.is_empty() {
-        writeln!(out, "🆔 Build ID : {}", build_id)?;
-    }
+    writeln!(out, "🆔 Build ID : {}", build_id)?;
     writeln!(out, "📦 Package  : {} v{}", pkg_name, pkg_version)?;
     writeln!(out, "🧭 Target OS: {}", target_os)?;
     writeln!(out, "🧩 Features : {:?}", features)?;
