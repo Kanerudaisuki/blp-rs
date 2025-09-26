@@ -1,0 +1,79 @@
+===== 🛠️  Build @ 2025-09-26 01:18:32 UTC =====
+🆔 Build ID : 671551804042039710
+
+
+
+===== 🛠️  Build @ 2025-09-26 01:18:34.189980 UTC =====
+🆔 Build ID : 671551804042039710
+📦 Package  : blp v0.1.28
+🧭 Target OS: macos
+🧩 Features : ["cli"]
+----- 🖼️  Icons -----
+⏭️  Icons: skipped (feature `ui` is disabled)
+
+
+===== 🛠️  Build @ 2025-09-26 01:18:50.866398 UTC =====
+🆔 Build ID : 671551804042039710
+📦 Package  : blp v0.1.28
+🧭 Target OS: macos
+🧩 Features : ["cli"]
+----- 🖼️  Icons -----
+⏭️  Icons: skipped (feature `ui` is disabled)
+
+
+===== 🛠️  Build @ 2025-09-26 01:19:07.084679 UTC =====
+🆔 Build ID : 671551804042039710
+📦 Package  : blp v0.1.28
+🧭 Target OS: windows
+🧩 Features : ["cli"]
+----- 🖼️  Icons -----
+⏭️  Icons: skipped (feature `ui` is disabled)
+
+
+===== 🛠️  Build @ 2025-09-26 01:19:23.186081 UTC =====
+🆔 Build ID : 671551804042039710
+📦 Package  : blp v0.1.28
+🧭 Target OS: linux
+🧩 Features : ["cli"]
+----- 🖼️  Icons -----
+⏭️  Icons: skipped (feature `ui` is disabled)
+
+
+===== 🛠️  Build @ 2025-09-26 01:19:40.742110 UTC =====
+🆔 Build ID : 671551804042039710
+📦 Package  : blp v0.1.28
+🧭 Target OS: macos
+🧩 Features : ["cli", "ui"]
+----- 🖼️  Icons -----
+ macOS:
+  - ♻️  Reused assets/generated/AppIcon.icns
+
+
+===== 🛠️  Build @ 2025-09-26 01:20:10.105721 UTC =====
+🆔 Build ID : 671551804042039710
+📦 Package  : blp v0.1.28
+🧭 Target OS: macos
+🧩 Features : ["cli", "ui"]
+----- 🖼️  Icons -----
+ macOS:
+  - ♻️  Reused assets/generated/AppIcon.icns
+
+
+===== 🛠️  Build @ 2025-09-26 01:20:51.434124 UTC =====
+🆔 Build ID : 671551804042039710
+📦 Package  : blp v0.1.28
+🧭 Target OS: windows
+🧩 Features : ["cli", "ui"]
+----- 🖼️  Icons -----
+ macOS:
+  - ♻️  Reused assets/generated/AppIcon.icns
+
+
+===== 🛠️  Build @ 2025-09-26 01:21:19.378746 UTC =====
+🆔 Build ID : 671551804042039710
+📦 Package  : blp v0.1.28
+🧭 Target OS: linux
+🧩 Features : ["cli", "ui"]
+----- 🖼️  Icons -----
+ macOS:
+  - ♻️  Reused assets/generated/AppIcon.icns
