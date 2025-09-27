@@ -56,9 +56,13 @@ blp to-blp <INPUT> [OUTPUT] [OPTIONS]
 **Options:**
 
 - `--mips <MASK...>`  
-  Explicit mipmap mask as a sequence of 0/1 values (length 1–16).  
-  Example: `--mips 1 0 1 1` → only the first, third and fourth mip levels are enabled.  
-  By default all levels are enabled.
+  Explicit mipmap mask as a sequence of 0/1 values (length 1–16).
+
+  By default **all mip levels are enabled**.
+    - `0` disables a mip level.
+    - `1` keeps a mip level enabled (mainly serving to position zeros).
+
+  Example: `--mips 1 0 1 1` → all levels stay enabled except the second one, which is disabled.
 
 - `--mips-limit <N>`  
   Limit the number of generated mip levels (1–16).  
